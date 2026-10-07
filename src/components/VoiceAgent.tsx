@@ -52,6 +52,7 @@ function VoiceAgentSession({
   onEventRef.current = onEvent;
 
   const conversation = useConversation({
+    micMuted: false,
     onConnect: () => {
       onEventRef.current({ type: "status", status: "live" });
       onEventRef.current({ type: "activity", activity: "listening" });
@@ -70,9 +71,16 @@ function VoiceAgentSession({
       onEventRef.current({ type: "error", kind: "connection" });
       onEventRef.current({ type: "activity", activity: "idle" });
     },
-    onError: () => {
+    onError: (message) => {
       if (endedByUserRef.current) return;
-      onEventRef.current({ type: "error", kind: "connection" });
+      const text = typeof message === "string" ? message : "";
+      const microphoneDenied = /microphone|permission|notallowed|denied|getUserMedia/i.test(
+        text,
+      );
+      onEventRef.current({
+        type: "error",
+        kind: microphoneDenied ? "microphone" : "connection",
+      });
     },
     onMessage: (payload) => {
       const text = payload.message?.trim();
@@ -139,12 +147,7 @@ function VoiceAgentSession({
     return () => clearInterval(timer);
   }, [status]);
 
-  const requestMicrophone = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((track) => track.stop());
-  };
-
-  const startConversation = useCallback(async () => {
+  const startConversation = useCallback(() => {
     if (status === "connecting" || status === "live") return;
 
     endedByUserRef.current = false;
@@ -153,27 +156,16 @@ function VoiceAgentSession({
     onEvent({ type: "reset" });
     onEvent({ type: "status", status: "connecting" });
 
-    try {
-      await requestMicrophone();
-    } catch {
-      onEvent({ type: "error", kind: "microphone" });
-      return;
-    }
-
     const agentId = getVoiceAgentId();
     if (!agentId) {
       onEvent({ type: "error", kind: "connection" });
       return;
     }
 
-    try {
-      conversation.startSession({
-        agentId,
-        connectionType: "webrtc",
-      });
-    } catch {
-      onEvent({ type: "error", kind: "connection" });
-    }
+    conversation.startSession({
+      agentId,
+      connectionType: "websocket",
+    });
   }, [conversation, onEvent, status]);
 
   const endConversation = useCallback(() => {
