@@ -251,7 +251,7 @@ function VoiceAgentSession({
                 Ready to help your customers.
               </p>
               <p className="mt-3 text-[14px] leading-relaxed text-[#6a6258]">
-                Talk to the Shreedavi AI Sales Assistant
+                Talk to the Shreedevi AI Sales Assistant
               </p>
               <motion.button
                 type="button"

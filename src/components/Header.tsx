@@ -7,7 +7,7 @@ export function Header() {
     <header className="flex items-start justify-between border-b border-[#eadfcd] px-6 py-6 md:px-12">
       <div>
         <p className="font-serif text-[22px] leading-6 tracking-[0.22em] text-[#2c261c] md:text-[26px]">
-          SHREEDAVI
+          SHREEDEVI
         </p>
         <p className="font-serif text-[22px] leading-6 tracking-[0.22em] text-[#2c261c] md:text-[26px]">
           JEWELLERS
