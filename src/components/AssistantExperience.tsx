@@ -97,67 +97,44 @@ export function AssistantExperience() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f6f1e8] text-[#2c261c]">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
+    <div className="min-h-screen text-[#f4eee6]">
+      <Header status={status} />
+      <motion.main
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: "easeOut" }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="mx-auto grid w-full max-w-[1240px] items-start gap-5 px-4 py-5 lg:grid-cols-[400px_minmax(0,1fr)] lg:px-6 lg:py-6"
       >
-        <Header />
-        <main className="mx-auto w-full max-w-[1440px] px-6 py-10 md:px-12 md:py-14">
-          <div className="max-w-2xl">
-            <p className="text-[11px] tracking-[0.28em] text-[#9a7b45]">
-              AI SALES ASSISTANT
-            </p>
-            <h1 className="mt-3 font-serif text-[40px] leading-tight tracking-[-0.02em] text-[#2c261c] md:text-[52px]">
-              Your AI Sales Executive
-            </h1>
-            <p className="mt-4 max-w-xl text-[16px] leading-8 text-[#6a6258]">
-              A conversational AI assistant designed to engage customers,
-              understand their requirements and help convert enquiries into
-              showroom visits.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-            <VoiceAgent
-              status={status}
-              activity={activity}
-              durationSeconds={durationSeconds}
-              errorKind={errorKind}
-              onEvent={onEvent}
-            />
-            <div className="grid gap-6">
-              <TranscriptPanel messages={messages} started={started} />
-              <InsightsPanel insights={insights} active={started} />
-            </div>
-          </div>
-
-          <section className="mt-8 flex flex-col gap-6 rounded-2xl border border-[#e6dcc8] bg-[#fbf8f2] px-6 py-6 shadow-[0_12px_36px_rgba(70,50,20,0.04)] md:flex-row md:items-center md:justify-between md:px-8">
-            <div className="grid flex-1 grid-cols-2 gap-6 md:grid-cols-4">
+        <VoiceAgent
+          status={status}
+          activity={activity}
+          durationSeconds={durationSeconds}
+          errorKind={errorKind}
+          onEvent={onEvent}
+        />
+        <div className="grid gap-5">
+          <section className="desk-panel flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
               {metrics.map((metric) => (
                 <div key={metric.label}>
-                  <p className="text-[11px] tracking-[0.16em] text-[#8a7a62]">
-                    {metric.label}
-                  </p>
-                  <p className="mt-1 text-[15px] text-[#2c261c]">
-                    {metric.value}
-                  </p>
+                  <p className="text-[11px] text-[#9c8e7c]">{metric.label}</p>
+                  <p className="mt-0.5 text-[15px] text-[#f6efe4]">{metric.value}</p>
                 </div>
               ))}
             </div>
-            <motion.button
+            <button
               type="button"
-              whileHover={{ y: -1 }}
               disabled={!summary}
               onClick={() => setSummaryOpen(true)}
-              className="h-11 shrink-0 rounded-full border border-[#d9cbb0] bg-white px-6 text-[13px] tracking-[0.08em] text-[#2c261c] disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-10 shrink-0 rounded-full border border-[rgba(224,196,138,0.35)] px-4 text-[13px] text-[#f6efe4] disabled:cursor-not-allowed disabled:opacity-35"
             >
-              View Call Summary
-            </motion.button>
+              Call summary
+            </button>
           </section>
-        </main>
-      </motion.div>
+          <TranscriptPanel messages={messages} started={started} />
+          <InsightsPanel insights={insights} active={started} />
+        </div>
+      </motion.main>
       <CallSummaryModal
         open={summaryOpen}
         summary={summary}

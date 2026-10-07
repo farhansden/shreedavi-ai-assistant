@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Mic, PhoneOff } from "lucide-react";
+import { Phone, PhoneOff } from "lucide-react";
 import {
   ConversationProvider,
   useConversation,
@@ -175,10 +175,6 @@ function VoiceAgentSession({
     onEvent({ type: "activity", activity: "idle" });
   }, [conversation, onEvent]);
 
-  const retry = () => {
-    void startConversation();
-  };
-
   const live = status === "live";
   const connecting = status === "connecting";
   const idle = status === "idle";
@@ -186,170 +182,113 @@ function VoiceAgentSession({
   const error = status === "error";
 
   const statusLabel = error
-    ? "Unavailable"
+    ? "Can't connect"
     : connecting
-      ? "CONNECTING..."
+      ? "Ringing Maya"
       : live
-        ? "LIVE CONVERSATION"
+        ? activity === "speaking"
+          ? "Maya is speaking"
+          : "Listening to you"
         : ended
-          ? "Call completed"
-          : "Ready to talk";
+          ? "Call ended"
+          : "Ready to call";
 
   return (
-    <section className="relative flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-[#e6dcc8] bg-[#fbf8f2] px-8 py-8 shadow-[0_18px_50px_rgba(70,50,20,0.06)]">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium tracking-[0.28em] text-[#8a7a62]">
-          {live ? "LIVE CONVERSATION" : "LIVE AI ASSISTANT"}
-        </p>
-        <div className="flex items-center gap-2 text-[12px] text-[#4a4338]">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              error
-                ? "bg-[#a15c4a]"
-                : connecting
-                  ? "bg-[#c4a574]"
-                  : live
-                    ? "bg-[#3d8b63]"
-                    : ended
-                      ? "bg-[#8a7a62]"
-                      : "bg-[#b8955a]"
-            }`}
-          >
-            <motion.span
-              className="block h-1.5 w-1.5 rounded-full bg-current"
-              animate={{ opacity: [1, 0.35, 1] }}
-              transition={{ duration: 1.6, repeat: Infinity }}
-            />
+    <section className="handset">
+      <div className="handset-screen px-6 pb-6 pt-5">
+        <div className="mx-auto h-1.5 w-16 rounded-full bg-white/15" />
+        <div className="mt-5 flex items-center justify-between text-[12px] text-[#b7aa9a]">
+          <span>Shreedevi voice</span>
+          <span className="rounded-full border border-[rgba(224,196,138,0.28)] px-2 py-0.5 text-[10px] text-[#e0c48a]">
+            HD voice
           </span>
-          <span className="tracking-[0.04em]">{statusLabel}</span>
         </div>
-      </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <AiAvatar status={status} activity={activity} />
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <AiAvatar status={status} activity={activity} />
+          <p className="font-serif text-[40px] leading-none text-[#f6efe4]">Maya</p>
+          <p className="mt-2 text-[13px] text-[#b7aa9a]">Sales caller · Shreedevi Jewellers</p>
 
-        <p className="font-serif text-[28px] tracking-[0.18em] text-[#2c261c]">
-          MAYA
-        </p>
-        <p className="mt-1 text-[13px] tracking-[0.08em] text-[#7a6e5c]">
-          AI Sales Executive
-        </p>
-
-        <AnimatePresence mode="wait">
-          {idle ? (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="mt-8 flex w-full max-w-sm flex-col items-center"
-            >
-              <p className="text-[13px] tracking-[0.18em] text-[#9a7b45]">
-                AI SALES ASSISTANT
-              </p>
-              <p className="mt-2 text-[15px] leading-relaxed text-[#5c5348]">
-                Ready to help your customers.
-              </p>
-              <p className="mt-3 text-[14px] leading-relaxed text-[#6a6258]">
-                Talk to the Shreedevi AI Sales Assistant
-              </p>
-              <motion.button
-                type="button"
-                onClick={() => void startConversation()}
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.985 }}
-                className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#2c261c] px-6 text-[14px] font-medium tracking-[0.08em] text-[#f7f1e6] shadow-[0_10px_24px_rgba(44,38,28,0.18)]"
+          <AnimatePresence mode="wait">
+            {live ? (
+              <motion.div
+                key="live"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-5"
               >
-                <Mic size={16} strokeWidth={1.7} />
-                Talk to AI
-              </motion.button>
-              <p className="mt-3 text-[12px] text-[#8a7a62]">
-                Click to start a conversation
-              </p>
-            </motion.div>
-          ) : live ? (
-            <motion.div
-              key="live"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-7 w-full max-w-sm"
-            >
-              <p className="text-[12px] tracking-[0.16em] text-[#8a7a62]">
-                Call duration
-              </p>
-              <p className="mt-1 font-serif text-[34px] tabular-nums text-[#2c261c]">
-                {formatDuration(durationSeconds)}
-              </p>
-              <div className="mt-5">
-                <Waveform activity={activity} />
+                <p className="font-serif text-[42px] tabular-nums leading-none text-[#f6efe4]">
+                  {formatDuration(durationSeconds)}
+                </p>
+              </motion.div>
+            ) : idle || ended ? (
+              <motion.p
+                key={idle ? "idle-copy" : "ended-copy"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="mt-4 max-w-[240px] text-[14px] leading-6 text-[#cbbfae]"
+              >
+                {idle
+                  ? "Place a call and speak the way you would to a salesperson on the floor."
+                  : `Last call ${formatDuration(durationSeconds)}`}
+              </motion.p>
+            ) : (
+              <span key="spacer" className="mt-4 block h-6" />
+            )}
+          </AnimatePresence>
+
+          <div className="mt-4 h-14">
+            <Waveform
+              activity={live ? activity : connecting ? "listening" : "idle"}
+            />
+          </div>
+          <p className="text-[13px] text-[#e0c48a]">{statusLabel}</p>
+        </div>
+
+        <div className="flex flex-col items-center pb-2">
+          {error ? (
+            <div className="mb-4 max-w-[260px] text-center text-[13px] leading-6 text-[#d7cbbd]">
+              {errorKind === "microphone"
+                ? "Allow the microphone so Maya can hear you."
+                : "The line didn't connect. Try the call again."}
+            </div>
+          ) : null}
+
+          <div className="flex items-end justify-center gap-10">
+            {live || connecting ? (
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  type="button"
+                  onClick={endConversation}
+                  whileTap={{ scale: 0.96 }}
+                  className="end-orb"
+                  aria-label="End call"
+                >
+                  <PhoneOff size={26} strokeWidth={1.8} />
+                </motion.button>
+                <span className="text-[12px] text-[#b7aa9a]">End</span>
               </div>
-              <p className="mt-4 text-[13px] tracking-[0.14em] text-[#6e6254]">
-                {activity === "speaking" ? "Speaking..." : "Listening..."}
-              </p>
-              <motion.button
-                type="button"
-                onClick={endConversation}
-                whileHover={{ y: -1 }}
-                className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[#d9cbb0] bg-white px-6 text-[13px] tracking-[0.08em] text-[#2c261c]"
-              >
-                <PhoneOff size={15} strokeWidth={1.7} />
-                End Conversation
-              </motion.button>
-            </motion.div>
-          ) : connecting ? (
-            <motion.div
-              key="link"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-10"
-            >
-              <p className="text-[13px] tracking-[0.16em] text-[#7a6e5c]">
-                CONNECTING...
-              </p>
-            </motion.div>
-          ) : error ? (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 flex w-full max-w-sm flex-col items-center"
-            >
-              <p className="text-[15px] leading-relaxed text-[#5c5348]">
-                {errorKind === "microphone"
-                  ? "Microphone access is required to speak with the AI assistant."
-                  : "Unable to connect to the AI assistant. Please try again."}
-              </p>
-              <motion.button
-                type="button"
-                onClick={retry}
-                whileHover={{ y: -1 }}
-                className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-full bg-[#2c261c] px-6 text-[13px] tracking-[0.08em] text-[#f7f1e6]"
-              >
-                Try Again
-              </motion.button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="ended"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 flex w-full max-w-sm flex-col items-center"
-            >
-              <p className="text-[15px] leading-relaxed text-[#5c5348]">
-                Conversation completed successfully.
-              </p>
-              <motion.button
-                type="button"
-                onClick={() => void startConversation()}
-                whileHover={{ y: -1 }}
-                className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#2c261c] px-6 text-[14px] font-medium tracking-[0.08em] text-[#f7f1e6]"
-              >
-                <Mic size={16} strokeWidth={1.7} />
-                Talk to AI
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  type="button"
+                  onClick={() => void startConversation()}
+                  whileTap={{ scale: 0.96 }}
+                  className="call-orb"
+                  aria-label={ended || error ? "Call again" : "Call Maya"}
+                >
+                  <Phone size={26} strokeWidth={1.8} />
+                </motion.button>
+                <span className="text-[12px] text-[#b7aa9a]">
+                  {ended || error ? "Call again" : "Call"}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="mx-auto mt-6 h-1 w-24 rounded-full bg-white/15" />
+        </div>
       </div>
     </section>
   );
