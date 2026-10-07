@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f1e8;
+  --foreground: #2c261c;
+  --gold: #b8955a;
+  --gold-muted: #9a7b45;
+  --ivory: #fbf8f2;
+  --line: #e6dcc8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-outfit);
+  --font-serif: var(--font-cormorant);
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit), sans-serif;
+}
+
+.font-serif {
+  font-family: var(--font-cormorant), "Times New Roman", serif;
+}
