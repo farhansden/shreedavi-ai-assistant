@@ -60,7 +60,7 @@ export function Waveform({ activity, active, readFrequency }: WaveformProps) {
           <span
             key={index}
             className={`w-[3px] rounded-full ${
-              activity === "speaking" ? "bg-[#a68448]" : "bg-[#8d8478]"
+              activity === "speaking" ? "bg-[#f0d7a6]" : "bg-[#c4a36a]"
             }`}
             style={{
               height: active ? 5 + amount * 36 : 4,

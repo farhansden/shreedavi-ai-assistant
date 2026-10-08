@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { InsightsPanel } from "@/components/InsightsPanel";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { VoiceAgent, type VoiceAgentHandle } from "@/components/VoiceAgent";
+import { releaseRecording, type CallRecording } from "@/lib/call-recording";
 import { buildCallSummary, displayValue, extractInsights } from "@/lib/insights";
 import { formatClock, formatDuration } from "@/lib/voice-session";
 import type {
@@ -24,6 +25,8 @@ export function AssistantExperience() {
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
+  const [recording, setRecording] = useState<CallRecording | null>(null);
+  const [recordingSettled, setRecordingSettled] = useState(false);
 
   const insights = useMemo(() => extractInsights(messages), [messages]);
   const summary = useMemo(() => {
@@ -40,6 +43,11 @@ export function AssistantExperience() {
         setDurationSeconds(0);
         setSummaryOpen(false);
         setErrorKind(null);
+        setRecording((current) => {
+          releaseRecording(current);
+          return null;
+        });
+        setRecordingSettled(false);
         break;
       case "error":
         setStatus("error");
@@ -83,8 +91,16 @@ export function AssistantExperience() {
     voiceRef.current?.restart();
   }, []);
 
+  const onRecording = useCallback((next: CallRecording | null) => {
+    setRecording((current) => {
+      if (current && current.url !== next?.url) releaseRecording(current);
+      return next;
+    });
+    setRecordingSettled(true);
+  }, []);
+
   return (
-    <div className="min-h-screen text-[#2a2622]">
+    <div className="min-h-screen text-[#f4eee6]">
       <Header status={status} />
       <main className="mx-auto grid w-full max-w-[1180px] items-start gap-6 px-5 py-6 lg:grid-cols-[minmax(300px,390px)_minmax(0,1fr)] lg:px-8 lg:py-8">
         <div>
@@ -97,6 +113,8 @@ export function AssistantExperience() {
             language={displayValue(insights.language)}
             intent={displayValue(insights.intent)}
             sentiment={displayValue(insights.sentiment)}
+            recording={recording}
+            onRecording={onRecording}
             onEvent={onEvent}
             onViewSummary={() => setSummaryOpen(true)}
           />
@@ -107,22 +125,33 @@ export function AssistantExperience() {
             active={status === "live" || status === "connecting"}
           />
           <InsightsPanel insights={insights} />
+          <section className="desk-panel p-5">
+            <h2 className="text-[15px] text-[#f6efe4]">Call recording</h2>
+            {recording ? (
+              <div className="mt-4 flex flex-col gap-3">
+                <audio controls src={recording.url} className="w-full" />
+                <a className="download-link w-fit" href={recording.url} download={recording.filename}>
+                  Download recording
+                </a>
+              </div>
+            ) : (
+              <p className="mt-3 text-[14px] leading-6 text-[#9c8e7c]">
+                {status === "live" || status === "connecting"
+                  ? "This call is being recorded. The file is ready to download when you end it."
+                  : status === "ended" && recordingSettled
+                    ? "This call could not be saved."
+                    : status === "ended"
+                      ? "Saving the recording…"
+                      : "End a call to download the conversation."}
+              </p>
+            )}
+          </section>
         </div>
       </main>
-      <div className="mx-auto w-full max-w-[1180px] px-5 pb-10 lg:px-8">
-        <section
-          aria-disabled="true"
-          className="border border-dashed border-[rgba(42,38,34,0.16)] px-5 py-4 text-[#8a8176]"
-        >
-          <p className="text-[11px] tracking-[0.16em]">CALL RECORDING</p>
-          <p className="mt-1 text-[13px] leading-6">
-            Available when phone telephony is connected.
-          </p>
-        </section>
-      </div>
       <CallSummaryModal
         open={summaryOpen}
         summary={summary}
+        recording={recording}
         onClose={() => setSummaryOpen(false)}
         onRestart={restart}
       />

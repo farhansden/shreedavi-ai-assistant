@@ -11,10 +11,19 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
-import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import { motion } from "framer-motion";
+import { Phone, PhoneOff } from "lucide-react";
+import { ConversationProvider, useConversation, useRawConversation } from "@elevenlabs/react";
 import { AiAvatar } from "@/components/AiAvatar";
 import { Waveform } from "@/components/Waveform";
+import {
+  hasPlaybackStream,
+  releaseRecording,
+  startCallRecorder,
+  type CallRecording,
+} from "@/lib/call-recording";
 import { formatDuration, getVoiceAgentId } from "@/lib/voice-session";
 import type {
   SessionErrorKind,
@@ -35,6 +44,8 @@ type VoiceAgentProps = {
   language: string;
   intent: string;
   sentiment: string;
+  recording: CallRecording | null;
+  onRecording: (recording: CallRecording | null) => void;
   onEvent: (event: VoiceSessionEvent) => void;
   onViewSummary: () => void;
 };
@@ -59,6 +70,8 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       language,
       intent,
       sentiment,
+      recording,
+      onRecording,
       onEvent,
       onViewSummary,
     },
@@ -74,7 +87,12 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     const activeAgentIdRef = useRef<string | null>(null);
     const mountedRef = useRef(true);
     const onEventRef = useRef(onEvent);
+    const onRecordingRef = useRef(onRecording);
+    const recordingEpochRef = useRef(0);
     onEventRef.current = onEvent;
+    onRecordingRef.current = onRecording;
+    const rawConversation = useRawConversation();
+    const [captureState, setCaptureState] = useState<"open" | "saving" | "ready" | "missing">("open");
 
     const emit = useCallback((event: VoiceSessionEvent) => {
       if (!mountedRef.current) return;
@@ -248,6 +266,50 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       return stopTimer;
     }, [emit, status]);
 
+    useEffect(() => {
+      if (status !== "live" || !rawConversation) return;
+      setCaptureState("open");
+      let handle: ReturnType<typeof startCallRecorder> = null;
+      let cancelled = false;
+      const startedAt = Date.now();
+      const begin = () => {
+        if (cancelled || handle) return;
+        try {
+          handle = startCallRecorder(rawConversation);
+        } catch {
+          handle = null;
+        }
+      };
+      if (hasPlaybackStream(rawConversation)) begin();
+      const retry = window.setInterval(() => {
+        if (cancelled || handle) return;
+        if (hasPlaybackStream(rawConversation) || Date.now() - startedAt > 1500) begin();
+      }, 200);
+      const stopRetry = window.setTimeout(() => window.clearInterval(retry), 2400);
+      const epoch = recordingEpochRef.current;
+      return () => {
+        cancelled = true;
+        window.clearInterval(retry);
+        window.clearTimeout(stopRetry);
+        if (!handle) {
+          if (epoch === recordingEpochRef.current && mountedRef.current) {
+            setCaptureState("missing");
+            onRecordingRef.current(null);
+          }
+          return;
+        }
+        if (mountedRef.current) setCaptureState("saving");
+        void handle.stop().then((next) => {
+          if (epoch !== recordingEpochRef.current || !mountedRef.current) {
+            releaseRecording(next);
+            return;
+          }
+          setCaptureState(next ? "ready" : "missing");
+          onRecordingRef.current(next);
+        });
+      };
+    }, [rawConversation, status]);
+
     const readFrequency = useCallback(() => {
       try {
         return activity === "speaking"
@@ -265,6 +327,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       wasLiveRef.current = false;
       reportedErrorRef.current = null;
       suppressDisconnectRef.current = 0;
+      recordingEpochRef.current += 1;
       secondsRef.current = 0;
       stopTimer();
       clearDrafts();
@@ -305,6 +368,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       }
       wasLiveRef.current = false;
       reportedErrorRef.current = null;
+      recordingEpochRef.current += 1;
       secondsRef.current = 0;
       stopTimer();
       clearDrafts();
@@ -321,179 +385,156 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     const error = status === "error";
     const showMeta = live || ended;
 
-    const kicker = error
-      ? errorKind === "microphone"
-        ? "MICROPHONE NEEDED"
-        : errorKind === "interrupted"
-          ? "CONNECTION INTERRUPTED"
-          : "UNABLE TO CONNECT"
+    const statusLabel = error
+      ? "Can't connect"
       : connecting
-        ? "CONNECTING"
+        ? "Ringing Maya"
         : live
-          ? "LIVE CONVERSATION"
+          ? activity === "speaking"
+            ? "Maya is speaking"
+            : "Listening to you"
           : ended
-            ? "CALL COMPLETED"
-            : "READY TO TALK";
-
-    const presence = connecting
-      ? "Connecting..."
-      : live
-        ? activity === "speaking"
-          ? "Speaking..."
-          : activity === "listening"
-            ? "Listening..."
-            : "Connected"
-        : null;
+            ? "Call ended"
+            : "Ready to call";
 
     return (
-      <section className="panel px-6 py-7 sm:px-7">
-        <p className="text-center text-[11px] tracking-[0.2em] text-[#8c7040]">
-          {idle ? "AI SALES EXECUTIVE" : kicker}
-        </p>
-        <div className="mt-5">
-          <AiAvatar status={status} activity={live ? activity : "idle"} />
-        </div>
-        <div className="mt-2 text-center">
-          <h1 className="font-serif text-[52px] leading-none text-[#2a2622]">Maya</h1>
-          <p className="mt-2 text-[13px] tracking-[0.08em] text-[#6e665c]">
-            AI Sales Executive
-          </p>
-          {idle ? (
-            <p className="mt-3 text-[11px] tracking-[0.18em] text-[#8c7040]">
-              READY TO TALK
-            </p>
-          ) : null}
-        </div>
-
-        {idle && (
-          <div className="mt-6 text-center">
-            <p className="mx-auto max-w-[280px] text-[14px] leading-6 text-[#5c564e]">
-              Conversational AI for customer outreach, lead qualification and
-              showroom appointments.
-            </p>
-            <button
-              type="button"
-              onClick={startConversation}
-              className="btn-primary mt-6 min-h-[64px] px-8 text-[16px]"
-            >
-              🎙 Talk to AI
-            </button>
-            <p className="mx-auto mt-4 max-w-[260px] text-[13px] leading-6 text-[#6e665c]">
-              Speak naturally with the Shreedavi AI Sales Assistant.
-            </p>
+      <section className="handset">
+        <div className="handset-screen px-6 pb-6 pt-5">
+          <div className="mx-auto h-1.5 w-16 rounded-full bg-white/15" />
+          <div className="mt-5 flex items-center justify-between text-[12px] text-[#b7aa9a]">
+            <span>Shreedavi voice</span>
+            <span className="rounded-full border border-[rgba(224,196,138,0.28)] px-2 py-0.5 text-[10px] text-[#e0c48a]">
+              {live ? "Recording" : "HD voice"}
+            </span>
           </div>
-        )}
 
-        {(connecting || live || ended) && (
-          <div className="mt-6 text-center">
-            <p className="text-[11px] tracking-[0.16em] text-[#8a8176]">
-              CALL DURATION
-            </p>
-            <p className="mt-1 font-serif text-[48px] tabular-nums leading-none text-[#2a2622]">
-              {formatDuration(durationSeconds)}
-            </p>
-            <div className="mt-4">
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <AiAvatar status={status} activity={live ? activity : "idle"} />
+            <p className="font-serif text-[40px] leading-none text-[#f6efe4]">Maya</p>
+            <p className="mt-2 text-[13px] text-[#b7aa9a]">Sales caller · Shreedavi Jewellers</p>
+
+            {live || ended ? (
+              <p className="mt-5 font-serif text-[42px] tabular-nums leading-none text-[#f6efe4]">
+                {formatDuration(durationSeconds)}
+              </p>
+            ) : (
+              <p className="mt-4 max-w-[240px] text-[14px] leading-6 text-[#cbbfae]">
+                {idle
+                  ? "Place a call and speak the way you would to a salesperson on the floor."
+                  : error
+                    ? errorKind === "microphone"
+                      ? "Microphone access is required to speak with the AI assistant."
+                      : errorKind === "interrupted"
+                        ? "Connection interrupted."
+                        : "Unable to connect to the AI assistant. Please try again."
+                    : "Connecting the line."}
+              </p>
+            )}
+
+            <div className="mt-4 h-14">
               <Waveform
                 activity={live ? activity : "idle"}
                 active={live}
                 readFrequency={readFrequency}
               />
             </div>
-            {presence ? (
-              <p className="mt-2 text-[13px] text-[#8c7040]" aria-live="polite">
-                {presence}
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        {ended && (
-          <p className="mx-auto mt-4 max-w-[260px] text-center text-[14px] leading-6 text-[#5c564e]">
-            Conversation completed successfully.
-          </p>
-        )}
-
-        {error && (
-          <div className="mx-auto mt-6 max-w-[280px] text-center">
-            <p className="text-[14px] leading-6 text-[#5c564e]">
-              {errorKind === "microphone"
-                ? "Microphone access is required to speak with the AI assistant."
-                : errorKind === "interrupted"
-                  ? "Connection interrupted."
-                  : "Unable to connect to the AI assistant. Please try again."}
+            <p className="text-[13px] text-[#e0c48a]" aria-live="polite">
+              {statusLabel}
             </p>
-            <button
-              type="button"
-              onClick={startConversation}
-              className="btn-primary mt-5"
-            >
-              {errorKind === "microphone"
-                ? "Enable Microphone"
-                : errorKind === "interrupted"
-                  ? "Reconnect"
-                  : "Try Again"}
-            </button>
           </div>
-        )}
 
-        <div className="mt-6 flex flex-col items-center gap-3">
-          {(live || connecting) && (
-            <button type="button" onClick={endConversation} className="btn-secondary">
-              End Conversation
-            </button>
-          )}
-          {ended && (
-            <button
-              type="button"
-              onClick={onViewSummary}
-              className="btn-primary uppercase tracking-[0.14em]"
-            >
-              View Call Summary
-            </button>
-          )}
-          {!idle && (
-            <button type="button" onClick={restart} className="btn-quiet">
-              Restart Demo
-            </button>
-          )}
+          <div className="flex flex-col items-center gap-3 pb-2">
+            {live || connecting ? (
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  type="button"
+                  onClick={endConversation}
+                  whileTap={{ scale: 0.96 }}
+                  className="end-orb"
+                  aria-label="End conversation"
+                >
+                  <PhoneOff size={26} strokeWidth={1.8} />
+                </motion.button>
+                <span className="text-[12px] text-[#b7aa9a]">End</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  type="button"
+                  onClick={startConversation}
+                  whileTap={{ scale: 0.96 }}
+                  className="call-orb"
+                  aria-label={ended || error ? "Call again" : "Talk to AI"}
+                >
+                  <Phone size={26} strokeWidth={1.8} />
+                </motion.button>
+                <span className="text-[12px] text-[#b7aa9a]">
+                  {error
+                    ? errorKind === "microphone"
+                      ? "Enable microphone"
+                      : errorKind === "interrupted"
+                        ? "Reconnect"
+                        : "Try again"
+                    : ended
+                      ? "Call again"
+                      : "Talk to AI"}
+                </span>
+              </div>
+            )}
+
+            {ended && (
+              <div className="mt-2 flex w-full flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onViewSummary}
+                  className="download-link"
+                >
+                  View call summary
+                </button>
+                {recording ? (
+                  <a className="download-link" href={recording.url} download={recording.filename}>
+                    Download recording
+                  </a>
+                ) : (
+                  <p className="text-[12px] text-[#9c8e7c]">
+                    {captureState === "missing"
+                      ? "This call could not be saved."
+                      : "Saving the recording…"}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {!idle && (
+              <button
+                type="button"
+                onClick={restart}
+                className="text-[12px] tracking-[0.08em] text-[#9c8e7c]"
+              >
+                Restart demo
+              </button>
+            )}
+
+            {showMeta && (
+              <dl className="mt-2 grid w-full grid-cols-2 gap-x-3 gap-y-2 border-t border-[rgba(224,196,138,0.14)] pt-3 text-left">
+                <MetaItem label="Language" value={language} />
+                <MetaItem label="Intent" value={intent} />
+                <MetaItem label="Sentiment" value={sentiment} />
+              </dl>
+            )}
+            <div className="mx-auto mt-2 h-1 w-24 rounded-full bg-white/15" />
+          </div>
         </div>
-
-        {showMeta && (
-          <dl className="mt-7 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-[rgba(42,38,34,0.08)] pt-5">
-            <MetaItem
-              label="Call status"
-              value={live ? "Connected" : "Completed"}
-              marked={live}
-            />
-            <MetaItem label="Duration" value={formatDuration(durationSeconds)} />
-            <MetaItem label="Language" value={language} />
-            <MetaItem label="Intent" value={intent} />
-            <MetaItem label="Sentiment" value={sentiment} />
-          </dl>
-        )}
       </section>
     );
   },
 );
 
-function MetaItem({
-  label,
-  value,
-  marked = false,
-}: {
-  label: string;
-  value: string;
-  marked?: boolean;
-}) {
+function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] tracking-[0.16em] text-[#8a8176] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 flex items-center gap-1.5 text-[14px] text-[#2a2622]">
-        {marked ? <span className="status-dot text-[#3f6b52]" data-pulse="true" /> : null}
-        {value}
-      </dd>
+      <dt className="text-[10px] tracking-[0.14em] text-[#9c8e7c] uppercase">{label}</dt>
+      <dd className="mt-0.5 text-[13px] text-[#f6efe4]">{value}</dd>
     </div>
   );
 }

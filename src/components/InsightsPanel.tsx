@@ -36,45 +36,40 @@ export function InsightsPanel({ insights }: InsightsPanelProps) {
   const hot = insights.leadStatus === "HOT";
 
   return (
-    <section className="panel p-6 sm:p-7">
-      <h2 className="text-[12px] tracking-[0.18em] text-[#8c7040]">AI INSIGHTS</h2>
-
-      <div className="mt-5 flex flex-col gap-4 border-b border-[rgba(42,38,34,0.08)] pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[11px] tracking-[0.16em] text-[#8a8176]">LEAD SCORE</p>
-          <p className="mt-1 font-serif text-[42px] leading-none text-[#2a2622]">
-            <LeadScoreValue value={insights.leadScore} />
-            <span className="ml-1 text-[22px] text-[#8a8176]">/ 100</span>
-          </p>
-        </div>
-        <p
-          className={`text-[13px] tracking-[0.14em] text-[#8c7040] ${hot ? "hot-lead" : ""}`}
-        >
+    <section className="desk-panel p-5">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-[15px] text-[#f6efe4]">Call notes</h2>
+        <p className={`text-[13px] ${hot ? "hot-lead text-[#f0a070]" : "text-[#e0c48a]"}`}>
           {formatLeadStatus(insights.leadStatus)}
         </p>
       </div>
-      <div className="mt-3 h-1 overflow-hidden rounded-full bg-[rgba(42,38,34,0.08)]">
-        <motion.div
-          className="h-full rounded-full bg-[#a68448]"
-          initial={false}
-          animate={{ width: `${insights.leadScore}%` }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        />
+
+      <div className="mt-4">
+        <p className="text-[11px] text-[#9c8e7c]">Lead score</p>
+        <p className="mt-1 text-[15px] text-[#f6efe4]">
+          <LeadScoreValue value={insights.leadScore} />
+          <span className="text-[#9c8e7c]"> / 100</span>
+        </p>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+          <motion.div
+            className="h-full rounded-full bg-[#e0c48a]"
+            initial={false}
+            animate={{ width: `${insights.leadScore}%` }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          />
+        </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {rows.map((row) => (
           <div
             key={row.key}
-            className="border-t border-[rgba(42,38,34,0.08)] pt-3"
+            className="rounded-xl border border-[rgba(224,196,138,0.12)] bg-black/20 px-3 py-2.5"
           >
-            <p className="text-[11px] tracking-[0.12em] text-[#8a8176] uppercase">
-              {row.label}
-            </p>
+            <p className="text-[11px] text-[#9c8e7c]">{row.label}</p>
             <p
-              key={row.value}
-              className={`mt-1 text-[16px] ${
-                row.value === "Not identified" ? "text-[#8a8176]" : "text-[#2a2622]"
+              className={`mt-1 text-[15px] ${
+                row.value === "Not identified" ? "text-[#9c8e7c]" : "text-[#f6efe4]"
               }`}
             >
               {row.value}

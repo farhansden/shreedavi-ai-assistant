@@ -3,11 +3,13 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import type { CallRecording } from "@/lib/call-recording";
 import type { CallSummary } from "@/lib/types";
 
 type CallSummaryModalProps = {
   open: boolean;
   summary: CallSummary | null;
+  recording: CallRecording | null;
   onClose: () => void;
   onRestart: () => void;
 };
@@ -28,6 +30,7 @@ const FIELDS: { key: keyof CallSummary; label: string }[] = [
 export function CallSummaryModal({
   open,
   summary,
+  recording,
   onClose,
   onRestart,
 }: CallSummaryModalProps) {
@@ -44,7 +47,7 @@ export function CallSummaryModal({
     <AnimatePresence>
       {open && summary && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#2a2622]/45 px-4 py-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4 py-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -58,25 +61,23 @@ export function CallSummaryModal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.28, ease: "easeOut" }}
-            className="panel max-h-[90vh] w-full max-w-[680px] overflow-y-auto bg-[#fbf8f3] p-7 sm:p-8"
+            className="desk-panel max-h-[90vh] w-full max-w-[680px] overflow-y-auto p-7 sm:p-8"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] tracking-[0.18em] text-[#8c7040]">
-                  SHREEDAVI JEWELLERS
-                </p>
+                <p className="text-[12px] text-[#e0c48a]">After the call</p>
                 <h2
                   id="call-summary-title"
-                  className="mt-2 font-serif text-[40px] leading-none text-[#2a2622]"
+                  className="mt-1 font-serif text-[32px] leading-none text-[#f6efe4]"
                 >
-                  Call Summary
+                  Call summary
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full p-2 text-[#6e665c] hover:bg-[rgba(42,38,34,0.05)]"
+                className="rounded-full p-2 text-[#cbbfae] hover:bg-white/5"
                 aria-label="Close summary"
               >
                 <X size={18} strokeWidth={1.6} />
@@ -87,17 +88,13 @@ export function CallSummaryModal({
               {FIELDS.map((field) => (
                 <div
                   key={field.key}
-                  className="border-t border-[rgba(42,38,34,0.08)] pt-3"
+                  className="rounded-xl border border-[rgba(224,196,138,0.12)] bg-black/20 px-3 py-2.5"
                 >
-                  <dt className="text-[11px] tracking-[0.12em] text-[#8a8176] uppercase">
-                    {field.label}
-                  </dt>
+                  <dt className="text-[11px] text-[#9c8e7c]">{field.label}</dt>
                   <dd
-                    className={`mt-1 text-[16px] ${
-                      summary[field.key] === "Not identified"
-                        ? "text-[#8a8176]"
-                        : "text-[#2a2622]"
-                    } ${field.key === "lead" && summary.lead.startsWith("🔥") ? "hot-lead" : ""}`}
+                    className={`mt-1 text-[15px] text-[#f6efe4] ${
+                      field.key === "lead" && summary.lead.startsWith("🔥") ? "hot-lead" : ""
+                    }`}
                   >
                     {summary[field.key]}
                   </dd>
@@ -105,21 +102,42 @@ export function CallSummaryModal({
               ))}
             </dl>
 
-            <div className="mt-6 border-t border-[rgba(42,38,34,0.08)] pt-4">
-              <p className="text-[11px] tracking-[0.16em] text-[#8c7040]">
-                AI SUMMARY
-              </p>
-              <p className="mt-3 text-[15px] leading-7 text-[#2a2622]">
+            <div className="mt-5 rounded-xl border border-[rgba(224,196,138,0.12)] bg-black/20 px-4 py-3">
+              <p className="text-[11px] text-[#9c8e7c]">What Maya heard</p>
+              <p className="mt-2 text-[15px] leading-7 text-[#f4eee6]">
                 {summary.aiSummary}
               </p>
             </div>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={onClose} className="btn-secondary">
+            <div className="mt-5">
+              {recording ? (
+                <div className="flex flex-col gap-3">
+                  <audio controls src={recording.url} className="w-full" />
+                  <a className="download-link" href={recording.url} download={recording.filename}>
+                    Download recording
+                  </a>
+                </div>
+              ) : (
+                <p className="text-[13px] text-[#9c8e7c]">
+                  The recording is saved when the call ends.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-[rgba(224,196,138,0.28)] px-4 py-2.5 text-[13px] text-[#f6efe4]"
+              >
                 Close
               </button>
-              <button type="button" onClick={onRestart} className="btn-quiet">
-                Restart Demo
+              <button
+                type="button"
+                onClick={onRestart}
+                className="rounded-full px-4 py-2.5 text-[13px] text-[#cbbfae]"
+              >
+                Restart demo
               </button>
             </div>
           </motion.div>
