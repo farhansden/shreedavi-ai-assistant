@@ -8,7 +8,7 @@ export type VoiceSessionStatus =
 
 export type VoiceActivity = "idle" | "listening" | "speaking";
 
-export type SessionErrorKind = "microphone" | "connection";
+export type SessionErrorKind = "microphone" | "connection" | "interrupted";
 
 export type TranscriptSpeaker = "ai" | "customer";
 
@@ -16,6 +16,7 @@ export type TranscriptMessage = {
   id: string;
   speaker: TranscriptSpeaker;
   text: string;
+  timestamp?: string;
 };
 
 export type InsightKey =
@@ -37,15 +38,16 @@ export type InsightItem = {
 
 export type CallSummary = {
   customer: string;
+  duration: string;
   product: string;
-  budget: string;
   occasion: string;
+  budget: string;
   timeline: string;
   visit: string;
+  intent: string;
   leadScore: string;
   lead: string;
   aiSummary: string;
-  nextAction: string;
 };
 
 export type VoiceSessionEvent =

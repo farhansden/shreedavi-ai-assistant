@@ -10,6 +10,7 @@ export type ConversationInsights = {
   timeline: string | null;
   visit: string | null;
   showroomInterest: boolean;
+  purchaseIntent: boolean;
   intent: string | null;
   sentiment: string | null;
   language: string | null;
@@ -50,42 +51,51 @@ const WORD_NUMBERS: Record<string, number> = {
 };
 
 const PRODUCTS: { pattern: RegExp; label: string }[] = [
-  { pattern: /\bdiamond\s+rings?\b/, label: "Diamond Ring" },
-  { pattern: /\bsolitaire\s+rings?\b/, label: "Solitaire Ring" },
-  { pattern: /\bengagement\s+rings?\b/, label: "Engagement Ring" },
-  { pattern: /\bwedding\s+rings?\b/, label: "Wedding Ring" },
-  { pattern: /\bgold\s+rings?\b/, label: "Gold Ring" },
-  { pattern: /\bplatinum\s+rings?\b/, label: "Platinum Ring" },
-  { pattern: /\brings?\b/, label: "Ring" },
-  { pattern: /\bmangalsutra\b/, label: "Mangalsutra" },
-  { pattern: /\bnecklace\b/, label: "Necklace" },
-  { pattern: /\bpendant\b/, label: "Pendant" },
-  { pattern: /\bearrings?\b/, label: "Earrings" },
-  { pattern: /\bjhumkas?\b/, label: "Jhumkas" },
-  { pattern: /\bbangles?\b/, label: "Bangles" },
-  { pattern: /\bbracelet\b/, label: "Bracelet" },
-  { pattern: /\bchain\b/, label: "Chain" },
-  { pattern: /\bchoker\b/, label: "Choker" },
-  { pattern: /\bpayal\b|\banklets?\b/, label: "Payal" },
-  { pattern: /\bnose\s+ring\b|\bnath\b/, label: "Nose Ring" },
-  { pattern: /\bmaang\s+tikka\b|\btikka\b/, label: "Maang Tikka" },
-  { pattern: /\bwedding\s+set\b|\bjewellery\s+set\b/, label: "Wedding Set" },
-  { pattern: /\bgold\s+coins?\b/, label: "Gold Coin" },
+  { pattern: /\bdiamond\s+rings?\b/i, label: "Diamond Ring" },
+  { pattern: /\bsolitaire\s+rings?\b/i, label: "Solitaire Ring" },
+  { pattern: /\bengagement\s+rings?\b/i, label: "Engagement Ring" },
+  { pattern: /\bwedding\s+rings?\b/i, label: "Wedding Ring" },
+  { pattern: /\bgold\s+rings?\b/i, label: "Gold Ring" },
+  { pattern: /\bplatinum\s+rings?\b/i, label: "Platinum Ring" },
+  { pattern: /\bbridal\s+sets?\b/i, label: "Bridal Set" },
+  { pattern: /\bwedding\s+sets?\b|\bjewellery\s+sets?\b/i, label: "Wedding Set" },
+  { pattern: /\bmangalsutras?\b/i, label: "Mangalsutra" },
+  { pattern: /\bnecklaces?\b/i, label: "Necklace" },
+  { pattern: /\bpendants?\b/i, label: "Pendant" },
+  { pattern: /\bearrings?\b/i, label: "Earrings" },
+  { pattern: /\bjhumkas?\b/i, label: "Jhumkas" },
+  { pattern: /\bbangles?\b/i, label: "Bangles" },
+  { pattern: /\bbracelets?\b/i, label: "Bracelet" },
+  { pattern: /\bchains?\b/i, label: "Chain" },
+  { pattern: /\bchokers?\b/i, label: "Choker" },
+  { pattern: /\bpayals?\b|\banklets?\b/i, label: "Payal" },
+  { pattern: /\bnose\s+rings?\b|\bnaths?\b/i, label: "Nose Ring" },
+  { pattern: /\bmaang\s+tikkas?\b|\btikkas?\b/i, label: "Maang Tikka" },
+  { pattern: /\bgold\s+coins?\b/i, label: "Gold Coin" },
+  { pattern: /\bdiamonds?\b/i, label: "Diamond Jewellery" },
+  { pattern: /\bgold\b/i, label: "Gold Jewellery" },
+  { pattern: /\brings?\b/i, label: "Ring" },
 ];
 
 const OCCASIONS: { pattern: RegExp; label: string }[] = [
-  { pattern: /\banniversar(?:y|ies)\b/, label: "Anniversary" },
-  { pattern: /\bengagement\b/, label: "Engagement" },
-  { pattern: /\bwedding\b/, label: "Wedding" },
-  { pattern: /\bbirthday\b/, label: "Birthday" },
-  { pattern: /\bdiwali\b/, label: "Diwali" },
-  { pattern: /\bakshaya\s+tritiya\b/, label: "Akshaya Tritiya" },
-  { pattern: /\bkarva\s+chauth\b/, label: "Karva Chauth" },
-  { pattern: /\bvalentine/, label: "Valentine's Day" },
-  { pattern: /\breception\b/, label: "Reception" },
+  { pattern: /\banniversar(?:y|ies)\b/i, label: "Anniversary" },
+  { pattern: /\bengagement\b/i, label: "Engagement" },
+  { pattern: /\bwedding\b|\bmarriage\b/i, label: "Wedding" },
+  { pattern: /\bbirthday\b/i, label: "Birthday" },
+  { pattern: /\bdiwali\b/i, label: "Diwali" },
+  { pattern: /\bakshaya\s+tritiya\b/i, label: "Akshaya Tritiya" },
+  { pattern: /\bkarva\s+chauth\b/i, label: "Karva Chauth" },
+  { pattern: /\bvalentine/i, label: "Valentine's Day" },
+  { pattern: /\breception\b/i, label: "Reception" },
 ];
 
-const NAME_STOP = /^(looking|interested|thinking|planning|calling|trying|here|there|good|fine|okay|ok)$/i;
+const NAME_STOP =
+  /^(looking|interested|thinking|planning|calling|trying|here|there|good|fine|okay|ok)$/i;
+
+const HINGLISH =
+  /\b(haan|bhaiya|abhi|chahiye|kitna|kal|parso|achha|achchha|accha)\b/i;
+
+type Hit = { start: number; end: number; label: string };
 
 function customerText(messages: TranscriptMessage[]): string {
   return messages
@@ -109,89 +119,124 @@ function formatInr(amount: number): string {
   return `₹${rest},${lastThree}`;
 }
 
-function extractProduct(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const item of PRODUCTS) {
-    if (item.pattern.test(lower)) return item.label;
-  }
-  return null;
+function withGlobal(pattern: RegExp): RegExp {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  return new RegExp(pattern.source, flags);
 }
 
-function extractOccasion(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const item of OCCASIONS) {
-    if (item.pattern.test(lower)) return item.label;
+function collectHits(
+  text: string,
+  rules: { pattern: RegExp; label: string }[],
+): Hit[] {
+  const hits: Hit[] = [];
+  for (const rule of rules) {
+    for (const match of text.matchAll(withGlobal(rule.pattern))) {
+      const start = match.index ?? 0;
+      hits.push({ start, end: start + match[0].length, label: rule.label });
+    }
   }
-  return null;
+  return hits.filter(
+    (hit) =>
+      !hits.some(
+        (other) =>
+          other !== hit &&
+          other.start <= hit.start &&
+          other.end >= hit.end &&
+          other.end - other.start > hit.end - hit.start,
+      ),
+  );
+}
+
+function lastLabel(
+  text: string,
+  rules: { pattern: RegExp; label: string }[],
+): string | null {
+  const hits = collectHits(text, rules).sort((a, b) => a.start - b.start);
+  return hits.at(-1)?.label ?? null;
 }
 
 function extractBudget(text: string): string | null {
-  const lower = text.toLowerCase();
-  const lakh = lower.match(
-    /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*lakhs?\b/,
-  );
-  if (lakh) {
-    const value = parseNumberToken(lakh[1]);
-    if (value) return formatInr(value * 100000);
+  const rules: { pattern: RegExp; label: string }[] = [];
+  const lakh = /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*lakhs?\b/gi;
+  for (const match of text.matchAll(lakh)) {
+    const value = parseNumberToken(match[1]);
+    if (!value) continue;
+    rules.push({
+      pattern: new RegExp(escapeRegExp(match[0]), "i"),
+      label: formatInr(value * 100000),
+    });
   }
 
-  const thousand = lower.match(
-    /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*(?:thousand|k)\b/,
-  );
-  if (thousand) {
-    const value = parseNumberToken(thousand[1]);
-    if (value) return formatInr(value * 1000);
+  const thousand =
+    /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*(?:thousand|k)\b/gi;
+  for (const match of text.matchAll(thousand)) {
+    const value = parseNumberToken(match[1]);
+    if (!value) continue;
+    rules.push({
+      pattern: new RegExp(escapeRegExp(match[0]), "i"),
+      label: formatInr(value * 1000),
+    });
   }
 
-  const rupee = lower.match(
-    /(?:₹|rs\.?|rupees?)\s*([\d,]+)(?:\s*\/-)?/,
-  );
-  if (rupee) {
-    const value = Number(rupee[1].replace(/,/g, ""));
-    if (value >= 1000) return formatInr(value);
+  const explicit =
+    /(?:₹|rs\.?|rupees?)\s*([\d,]{4,})|\b(\d{1,2},\d{2},\d{3})\b|\b(\d{5,7})\b/gi;
+  for (const match of text.matchAll(explicit)) {
+    const raw = match[1] ?? match[2] ?? match[3];
+    const value = Number(raw.replace(/,/g, ""));
+    if (value < 1000) continue;
+    rules.push({
+      pattern: new RegExp(escapeRegExp(match[0]), "i"),
+      label: formatInr(value),
+    });
   }
 
-  const grouped = lower.match(/\b(\d{1,2},\d{2},\d{3})\b/);
-  if (grouped) {
-    const value = Number(grouped[1].replace(/,/g, ""));
-    if (value >= 1000) return formatInr(value);
-  }
+  return lastLabel(text, rules);
+}
 
-  return null;
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function extractTimeline(text: string): string | null {
-  const lower = text.toLowerCase();
-  const range = lower.match(
-    /(?:within\s+)?([a-z]+|\d+)\s*(?:-|–|to)\s*([a-z]+|\d+)\s*(days?|weeks?|months?)/,
-  );
-  if (range) {
-    const a = parseNumberToken(range[1]);
-    const b = parseNumberToken(range[2]);
-    if (a && b) {
-      const unit = range[3].replace(/s$/, "");
-      const plural = `${unit}${b === 1 ? "" : "s"}`;
-      return `${a}–${b} ${plural.charAt(0).toUpperCase()}${plural.slice(1)}`;
-    }
+  const rules: { pattern: RegExp; label: string }[] = [
+    {
+      pattern: /\b(?:in\s+the\s+next\s+|next\s+|within\s+|in\s+)?(?:two|2)\s+weeks?\b/i,
+      label: "2–3 Weeks",
+    },
+    { pattern: /\bnext\s+month\b/i, label: "Next Month" },
+    { pattern: /\bthis\s+month\b/i, label: "This Month" },
+    { pattern: /\bnext\s+week\b/i, label: "Next Week" },
+    { pattern: /\bthis\s+week\b/i, label: "This Week" },
+    { pattern: /\bas soon as possible\b|\basap\b/i, label: "As soon as possible" },
+  ];
+
+  const range =
+    /(?:within\s+)?([a-z]+|\d+)\s*(?:-|–|to)\s*([a-z]+|\d+)\s*(days?|weeks?|months?)/gi;
+  for (const match of text.matchAll(range)) {
+    const a = parseNumberToken(match[1]);
+    const b = parseNumberToken(match[2]);
+    if (!a || !b) continue;
+    const unit = match[3].replace(/s$/, "");
+    const plural = `${unit}${b === 1 ? "" : "s"}`;
+    rules.push({
+      pattern: new RegExp(escapeRegExp(match[0]), "i"),
+      label: `${a}–${b} ${plural.charAt(0).toUpperCase()}${plural.slice(1)}`,
+    });
   }
 
-  const within = lower.match(
-    /(?:within|in)\s+([a-z]+|\d+)\s*(days?|weeks?|months?)/,
-  );
-  if (within) {
-    const value = parseNumberToken(within[1]);
-    if (value) {
-      const unit = within[2];
-      return `${value} ${unit.charAt(0).toUpperCase()}${unit.slice(1)}`;
-    }
+  const within = /(?:within|in)\s+([a-z]+|\d+)\s*(days?|weeks?|months?)/gi;
+  for (const match of text.matchAll(within)) {
+    if (/\b(?:two|2)\s+weeks?\b/i.test(match[0])) continue;
+    const value = parseNumberToken(match[1]);
+    if (!value) continue;
+    const unit = match[2];
+    rules.push({
+      pattern: new RegExp(escapeRegExp(match[0]), "i"),
+      label: `${value} ${unit.charAt(0).toUpperCase()}${unit.slice(1)}`,
+    });
   }
 
-  if (/\bas soon as possible\b|\basap\b/.test(lower)) return "As soon as possible";
-  if (/\bnext month\b/.test(lower)) return "Next month";
-  if (/\bthis month\b/.test(lower)) return "This month";
-  if (/\bnext week\b/.test(lower)) return "Next week";
-  if (/\bthis week\b/.test(lower)) return "This week";
-  return null;
+  return lastLabel(text, rules);
 }
 
 function titleCase(value: string): string {
@@ -199,32 +244,36 @@ function titleCase(value: string): string {
 }
 
 function extractVisit(text: string): string | null {
-  const lower = text.toLowerCase();
-  const dayMatch = lower.match(
-    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|this weekend|weekend)\b/,
-  );
-  const timeMatch = lower.match(
-    /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/,
-  );
-  const periodMatch = lower.match(/\b(morning|afternoon|evening|night)\b/);
-
-  if (!dayMatch && !timeMatch && !periodMatch) return null;
-
-  const parts: string[] = [];
-  if (dayMatch) parts.push(titleCase(dayMatch[1]));
-  if (timeMatch) {
-    const hour = timeMatch[1];
-    const minutes = timeMatch[2] ? `:${timeMatch[2]}` : "";
-    parts.push(`${hour}${minutes} ${timeMatch[3].toUpperCase()}`);
-  } else if (periodMatch) {
-    parts.push(titleCase(periodMatch[1]));
+  const dayPattern =
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|this weekend|weekend)(?:\s+(morning|afternoon|evening|night))?\b/gi;
+  let day: { label: string; period?: string } | null = null;
+  for (const match of text.matchAll(dayPattern)) {
+    day = { label: titleCase(match[1]), period: match[2] };
   }
 
+  const timePattern = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/gi;
+  let time: string | null = null;
+  for (const match of text.matchAll(timePattern)) {
+    const minutes = match[2] ? `:${match[2]}` : "";
+    time = `${match[1]}${minutes} ${match[3].toUpperCase()}`;
+  }
+
+  let period: string | null = day?.period ? titleCase(day.period) : null;
+  if (!period) {
+    const periodPattern = /\b(morning|afternoon|evening|night)\b/gi;
+    for (const match of text.matchAll(periodPattern)) period = titleCase(match[1]);
+  }
+
+  if (!day && !time && !period) return null;
+  const parts: string[] = [];
+  if (day) parts.push(day.label);
+  if (time) parts.push(time);
+  else if (period) parts.push(period);
   return parts.join(" · ");
 }
 
 function extractShowroomInterest(text: string): boolean {
-  return /\b(showroom|store|visit|come in|drop by|appointment|see (?:it |them )?in person|come over)\b/i.test(
+  return /\b(showroom|appointment|visit|come in|drop by|see (?:it |them )?in person|come over)\b/i.test(
     text,
   );
 }
@@ -233,70 +282,58 @@ function extractName(text: string): string | null {
   const matches = text.matchAll(
     /\b(?:my name is|this is|i am|i['’]m)\s+([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\b/gi,
   );
+  let name: string | null = null;
   for (const match of matches) {
     const parts = match[1].trim().split(/\s+/);
     if (parts.some((part) => NAME_STOP.test(part))) continue;
     if (!parts.every((part) => /^[A-Z][a-z]+$/.test(part))) continue;
-    return parts.join(" ");
+    name = parts.join(" ");
   }
-  return null;
+  return name;
 }
 
-function extractIntent(text: string, hasProduct: boolean): string | null {
-  const lower = text.toLowerCase();
-  if (!lower.trim()) return null;
-  if (/\b(buy|purchase|purchasing|order|booking)\b/.test(lower)) return "Purchase";
-  if (hasProduct && /\b(looking for|interested|need|want|gift)\b/.test(lower)) {
-    return "Purchase";
-  }
-  if (/\b(visit|showroom|appointment|come in)\b/.test(lower)) return "Visit";
-  if (/\b(looking|interested|enquiry|inquiry|information)\b/.test(lower)) {
-    return "Enquiry";
-  }
-  return null;
+function extractPurchaseIntent(text: string): boolean {
+  const cleaned = text.replace(/\bnot interested\b/gi, " ");
+  return /\b(want to buy|looking|interested|purchase|purchasing|buy)\b/i.test(
+    cleaned,
+  );
 }
 
 function extractSentiment(text: string): string | null {
-  const lower = text.toLowerCase();
-  if (!lower.trim()) return null;
+  if (!text.trim()) return null;
   const negative =
-    /\b(expensive|costly|too much|not sure|maybe later|don't|dont|cannot|can't|no thanks|not interested|cheap)\b/.test(
-      lower,
-    );
+    /\b(expensive|costly|too much|not sure|maybe later|not interested|no thanks|cheap|don't like|dont like)\b/gi;
   const positive =
-    /\b(thank|thanks|perfect|great|love|wonderful|yes|sure|interested|sounds good|that works|please|beautiful|nice)\b/.test(
-      lower,
-    );
-  if (negative) return "Negative";
-  if (positive) return "Positive";
-  return null;
+    /\b(thank|thanks|perfect|great|love|wonderful|sure|interested|sounds good|that works|beautiful|nice|happy|good)\b/gi;
+  const lastNegative = [...text.matchAll(negative)].at(-1);
+  const lastPositive = [...text.matchAll(positive)].at(-1);
+  if (!lastNegative && !lastPositive) return null;
+  if (lastNegative && lastPositive) {
+    return (lastNegative.index ?? 0) > (lastPositive.index ?? 0)
+      ? "Negative"
+      : "Positive";
+  }
+  return lastNegative ? "Negative" : "Positive";
 }
 
 function extractLanguage(text: string): string | null {
   if (!text.trim()) return null;
-  if (
-    /\b(hai|hain|kya|chahiye|ji|accha|acha|nahi|nahin|theek|bilkul|dikhao|dekhna|kitna|aaj|kal)\b/i.test(
-      text,
-    )
-  ) {
-    return "English → Hinglish";
-  }
-  return "English";
+  return HINGLISH.test(text) ? "Hinglish" : "English";
 }
 
 function scoreLead(insights: {
   product: string | null;
   budget: string | null;
   timeline: string | null;
+  purchaseIntent: boolean;
   showroomInterest: boolean;
-  visit: string | null;
 }): { leadScore: number; leadStatus: LeadStatus } {
   let leadScore = 0;
   if (insights.product) leadScore += 20;
   if (insights.budget) leadScore += 20;
   if (insights.timeline) leadScore += 20;
+  if (insights.purchaseIntent) leadScore += 20;
   if (insights.showroomInterest) leadScore += 20;
-  if (insights.visit) leadScore += 20;
   leadScore = Math.min(100, leadScore);
   const leadStatus: LeadStatus =
     leadScore >= 70 ? "HOT" : leadScore >= 40 ? "WARM" : "COLD";
@@ -307,26 +344,33 @@ export function displayValue(value: string | null | undefined): string {
   return value && value.trim() ? value : UNKNOWN;
 }
 
+export function formatLeadStatus(status: LeadStatus): string {
+  if (status === "HOT") return "🔥 HOT LEAD";
+  if (status === "WARM") return "WARM LEAD";
+  return "COLD LEAD";
+}
+
 export function extractInsights(
   messages: TranscriptMessage[],
 ): ConversationInsights {
   const spoken = customerText(messages);
-  const product = extractProduct(spoken);
-  const occasion = extractOccasion(spoken);
+  const transcript = messages.map((message) => message.text).join(" ");
+  const product = lastLabel(spoken, PRODUCTS);
+  const occasion = lastLabel(spoken, OCCASIONS);
   const budget = extractBudget(spoken);
   const timeline = extractTimeline(spoken);
   const visit = extractVisit(spoken);
   const showroomInterest = extractShowroomInterest(spoken);
+  const purchaseIntent = extractPurchaseIntent(spoken);
   const customerName = extractName(spoken);
-  const intent = extractIntent(spoken, Boolean(product));
   const sentiment = extractSentiment(spoken);
-  const language = extractLanguage(spoken);
+  const language = extractLanguage(transcript);
   const { leadScore, leadStatus } = scoreLead({
     product,
     budget,
     timeline,
+    purchaseIntent,
     showroomInterest,
-    visit,
   });
 
   return {
@@ -337,7 +381,8 @@ export function extractInsights(
     timeline,
     visit,
     showroomInterest,
-    intent,
+    purchaseIntent,
+    intent: purchaseIntent ? "Purchase" : null,
     sentiment,
     language,
     leadScore,
@@ -345,68 +390,98 @@ export function extractInsights(
   };
 }
 
-function sentenceFromFacts(insights: ConversationInsights): string {
-  const clauses: string[] = [];
-  if (insights.product) {
-    const product = insights.product.toLowerCase();
-    const productPhrase = product.endsWith("s") ? product : `a ${product}`;
-    let line = `Customer is interested in purchasing ${productPhrase}`;
-    if (insights.occasion) line += ` for an upcoming ${insights.occasion.toLowerCase()}`;
-    line += ".";
-    clauses.push(line);
-  }
-  if (insights.budget) {
-    clauses.push(`Budget identified is ${insights.budget}.`);
-  }
-  if (insights.timeline) {
-    clauses.push(`Purchase timeline is ${insights.timeline}.`);
-  }
-  if (insights.visit) {
-    clauses.push(
-      `Customer expressed interest in visiting the showroom ${insights.visit}.`,
-    );
-  } else if (insights.showroomInterest) {
-    clauses.push("Customer expressed interest in visiting the showroom.");
-  }
-  if (clauses.length === 0) {
-    return "The conversation did not identify a specific product, budget or visit preference.";
-  }
-  return clauses.join(" ");
+function articleFor(label: string): string {
+  return /^[aeiou]/i.test(label) ? "an" : "a";
 }
 
-function nextAction(insights: ConversationInsights): string {
-  if (insights.visit) {
-    return "Schedule the showroom visit and have the sales team confirm the appointment.";
+function productPhrase(label: string): string {
+  const lower = label.toLowerCase();
+  if (
+    lower.endsWith("jewellery") ||
+    /\b(earrings|bangles|jhumkas)\b/.test(lower)
+  ) {
+    return lower;
   }
-  if (insights.showroomInterest) {
-    return "Follow up to confirm a convenient showroom visit time.";
+  return `${articleFor(lower)} ${lower}`;
+}
+
+function timelinePhrase(timeline: string): string {
+  if (/^(next|this|as soon)/i.test(timeline)) return timeline.toLowerCase();
+  return `within ${timeline.toLowerCase()}`;
+}
+
+function sentenceFromFacts(insights: ConversationInsights): string {
+  const sentences: string[] = [];
+
+  if (insights.product && insights.occasion) {
+    sentences.push(
+      `Customer is interested in ${productPhrase(insights.product)} for ${articleFor(insights.occasion)} ${insights.occasion.toLowerCase()}.`,
+    );
+  } else if (insights.product) {
+    sentences.push(
+      `Customer is interested in ${productPhrase(insights.product)}.`,
+    );
+  } else if (insights.occasion) {
+    sentences.push(
+      `The customer mentioned ${articleFor(insights.occasion)} ${insights.occasion.toLowerCase()}.`,
+    );
   }
-  if (insights.product) {
-    return "Have the sales team follow up with a curated selection based on the stated interest.";
+
+  const details: string[] = [];
+  if (insights.budget) {
+    details.push(`indicated a budget of approximately ${insights.budget}`);
   }
-  return "Follow up to understand the customer's requirements in more detail.";
+  if (insights.timeline) {
+    details.push(`plans to purchase ${timelinePhrase(insights.timeline)}`);
+  }
+  if (details.length > 0) {
+    sentences.push(`The customer ${details.join(" and ")}.`);
+  }
+
+  if (insights.showroomInterest && insights.visit) {
+    sentences.push(
+      `The customer expressed interest in visiting the showroom and indicated ${insights.visit} as a preferred time.`,
+    );
+  } else if (insights.showroomInterest) {
+    sentences.push("The customer expressed interest in visiting the showroom.");
+  } else if (insights.visit) {
+    sentences.push(
+      `The customer indicated ${insights.visit} as a preferred time.`,
+    );
+  }
+
+  if (sentences.length === 0) {
+    return "The conversation did not include enough detail to identify a product, budget, timeline, or visit preference.";
+  }
+  return sentences.join(" ");
 }
 
 export function buildCallSummary(
   insights: ConversationInsights,
+  duration: string,
 ): CallSummary {
   return {
-    customer: displayValue(insights.customerName),
+    customer: insights.customerName?.trim() || "Guest Customer",
+    duration,
     product: displayValue(insights.product),
-    budget: displayValue(insights.budget),
     occasion: displayValue(insights.occasion),
+    budget: displayValue(insights.budget),
     timeline: displayValue(insights.timeline),
     visit: displayValue(insights.visit),
+    intent: displayValue(insights.intent),
     leadScore: `${insights.leadScore} / 100`,
-    lead: insights.leadStatus,
+    lead: formatLeadStatus(insights.leadStatus),
     aiSummary: sentenceFromFacts(insights),
-    nextAction: nextAction(insights),
   };
 }
 
 export function insightRows(insights: ConversationInsights) {
   return [
-    { key: "product", label: "Product Interest", value: displayValue(insights.product) },
+    {
+      key: "product",
+      label: "Product Interest",
+      value: displayValue(insights.product),
+    },
     { key: "occasion", label: "Occasion", value: displayValue(insights.occasion) },
     { key: "budget", label: "Budget", value: displayValue(insights.budget) },
     {
@@ -420,7 +495,11 @@ export function insightRows(insights: ConversationInsights) {
       value: displayValue(insights.visit),
     },
     { key: "intent", label: "Intent", value: displayValue(insights.intent) },
-    { key: "sentiment", label: "Sentiment", value: displayValue(insights.sentiment) },
+    {
+      key: "sentiment",
+      label: "Sentiment",
+      value: displayValue(insights.sentiment),
+    },
     {
       key: "leadScore",
       label: "Lead Score",
@@ -429,7 +508,7 @@ export function insightRows(insights: ConversationInsights) {
     {
       key: "leadStatus",
       label: "Lead Status",
-      value: insights.leadStatus,
+      value: formatLeadStatus(insights.leadStatus),
     },
   ] as const;
 }

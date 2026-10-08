@@ -1,13 +1,15 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef } from "react";
-import type { ConversationInsights } from "@/lib/insights";
-import { insightRows } from "@/lib/insights";
+import {
+  formatLeadStatus,
+  insightRows,
+  type ConversationInsights,
+} from "@/lib/insights";
 
 type InsightsPanelProps = {
   insights: ConversationInsights;
-  active: boolean;
 };
 
 function LeadScoreValue({ value }: { value: number }) {
@@ -27,76 +29,59 @@ function LeadScoreValue({ value }: { value: number }) {
   return <motion.span>{rounded}</motion.span>;
 }
 
-function leadTone(status: ConversationInsights["leadStatus"]) {
-  if (status === "HOT") return "text-[#f0a070]";
-  if (status === "WARM") return "text-[#e0c48a]";
-  return "text-[#9ec4d4]";
-}
-
-export function InsightsPanel({ insights, active }: InsightsPanelProps) {
-  const rows = insightRows(insights);
+export function InsightsPanel({ insights }: InsightsPanelProps) {
+  const rows = insightRows(insights).filter(
+    (row) => row.key !== "leadScore" && row.key !== "leadStatus",
+  );
+  const hot = insights.leadStatus === "HOT";
 
   return (
-    <section className="desk-panel p-5">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] text-[#f6efe4]">Call notes</h2>
-        <p className="text-[12px] text-[#9c8e7c]">Captured on the line</p>
+    <section className="panel p-6 sm:p-7">
+      <h2 className="text-[12px] tracking-[0.18em] text-[#8c7040]">AI INSIGHTS</h2>
+
+      <div className="mt-5 flex flex-col gap-4 border-b border-[rgba(42,38,34,0.08)] pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] tracking-[0.16em] text-[#8a8176]">LEAD SCORE</p>
+          <p className="mt-1 font-serif text-[42px] leading-none text-[#2a2622]">
+            <LeadScoreValue value={insights.leadScore} />
+            <span className="ml-1 text-[22px] text-[#8a8176]">/ 100</span>
+          </p>
+        </div>
+        <p
+          className={`text-[13px] tracking-[0.14em] text-[#8c7040] ${hot ? "hot-lead" : ""}`}
+        >
+          {formatLeadStatus(insights.leadStatus)}
+        </p>
+      </div>
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-[rgba(42,38,34,0.08)]">
+        <motion.div
+          className="h-full rounded-full bg-[#a68448]"
+          initial={false}
+          animate={{ width: `${insights.leadScore}%` }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+        />
       </div>
 
-      {!active ? (
-        <p className="mt-4 text-[14px] leading-6 text-[#9c8e7c]">
-          Product, budget, occasion and visit preference show up here as Maya hears them.
-        </p>
-      ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <AnimatePresence initial={false}>
-            {rows.map((row) => (
-              <motion.div
-                key={row.key}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="rounded-xl border border-[rgba(224,196,138,0.12)] bg-black/20 px-3 py-2.5"
-              >
-                <p className="text-[11px] text-[#9c8e7c]">{row.label}</p>
-                {row.key === "leadScore" ? (
-                  <div className="mt-1.5">
-                    <p className="text-[15px] text-[#f6efe4]">
-                      <LeadScoreValue value={insights.leadScore} />
-                      <span className="text-[#9c8e7c]"> / 100</span>
-                    </p>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
-                      <motion.div
-                        className="h-full rounded-full bg-[#e0c48a]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${insights.leadScore}%` }}
-                        transition={{ duration: 0.7, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                ) : row.key === "leadStatus" ? (
-                  <p className={`mt-1 text-[15px] ${leadTone(insights.leadStatus)}`}>
-                    {insights.leadStatus === "HOT"
-                      ? "Hot lead"
-                      : insights.leadStatus === "WARM"
-                        ? "Warm lead"
-                        : "Cold lead"}
-                  </p>
-                ) : (
-                  <motion.p
-                    key={row.value}
-                    initial={{ opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-1 text-[15px] text-[#f6efe4]"
-                  >
-                    {row.value}
-                  </motion.p>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className="border-t border-[rgba(42,38,34,0.08)] pt-3"
+          >
+            <p className="text-[11px] tracking-[0.12em] text-[#8a8176] uppercase">
+              {row.label}
+            </p>
+            <p
+              key={row.value}
+              className={`mt-1 text-[16px] ${
+                row.value === "Not identified" ? "text-[#8a8176]" : "text-[#2a2622]"
+              }`}
+            >
+              {row.value}
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

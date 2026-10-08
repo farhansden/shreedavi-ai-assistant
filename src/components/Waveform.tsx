@@ -1,50 +1,75 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import type { VoiceActivity } from "@/lib/types";
 
-const BARS = [10, 18, 14, 28, 16, 36, 22, 44, 18, 32, 14, 40, 20, 30, 12, 24, 16];
+const BAR_COUNT = 17;
+const RESTING_LEVELS = Array.from({ length: BAR_COUNT }, () => 0);
 
 type WaveformProps = {
   activity: VoiceActivity;
+  active: boolean;
+  readFrequency: () => Uint8Array | null;
 };
 
-export function Waveform({ activity }: WaveformProps) {
-  const speaking = activity === "speaking";
-  const active = activity !== "idle";
+export function Waveform({ activity, active, readFrequency }: WaveformProps) {
+  const [levels, setLevels] = useState<number[]>(RESTING_LEVELS);
+
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    let last = 0;
+    const tick = (now: number) => {
+      frame = window.requestAnimationFrame(tick);
+      if (now - last < 90) return;
+      last = now;
+      const data = readFrequency();
+      const next = Array.from({ length: BAR_COUNT }, (_, index) => {
+        const breath = 0.14 + 0.08 * Math.sin(now / 320 + index * 0.55);
+        if (!data?.length) return breath;
+        const step = Math.max(1, data.length / BAR_COUNT);
+        const start = Math.floor(index * step);
+        const end = Math.min(
+          data.length,
+          Math.max(start + 1, Math.floor((index + 1) * step)),
+        );
+        let sum = 0;
+        for (let cursor = start; cursor < end; cursor += 1) sum += data[cursor] ?? 0;
+        const real = sum / (end - start) / 255;
+        return Math.min(1, Math.max(breath * 0.45, real));
+      });
+      setLevels(next);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [active, readFrequency]);
+
+  useEffect(() => {
+    if (active) return;
+    setLevels(RESTING_LEVELS);
+  }, [active]);
 
   return (
     <div
-      className="flex h-14 items-center justify-center gap-[4px]"
+      className="flex h-12 items-end justify-center gap-[3px]"
       aria-hidden="true"
     >
-      {BARS.map((height, index) => (
-        <motion.span
-          key={index}
-          className={`w-[3px] rounded-full ${
-            speaking ? "bg-[#f0d7a6]" : "bg-[#c4a36a]"
-          }`}
-          style={{ boxShadow: speaking ? "0 0 10px rgba(240,215,166,0.45)" : undefined }}
-          animate={
-            active
-              ? {
-                  height: [
-                    Math.max(6, height * 0.28),
-                    height,
-                    Math.max(8, height * 0.4),
-                  ],
-                  opacity: speaking ? [0.55, 1, 0.6] : [0.3, 0.75, 0.4],
-                }
-              : { height: 6, opacity: 0.22 }
-          }
-          transition={{
-            duration: speaking ? 0.55 : 1.05,
-            repeat: Infinity,
-            delay: index * 0.045,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+      {levels.map((level, index) => {
+        const amount = active ? Math.max(0, Math.min(1, level)) : 0;
+        return (
+          <span
+            key={index}
+            className={`w-[3px] rounded-full ${
+              activity === "speaking" ? "bg-[#a68448]" : "bg-[#8d8478]"
+            }`}
+            style={{
+              height: active ? 5 + amount * 36 : 4,
+              opacity: active ? 0.4 + amount * 0.6 : 0.28,
+              transition: "height 90ms linear, opacity 90ms linear",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

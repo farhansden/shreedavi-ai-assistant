@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0c0b09;
-  --foreground: #f4eee6;
-  --gold: #e0c48a;
-  --gold-deep: #b8924e;
-  --ink: #14110e;
-  --panel: #141210;
-  --line: rgba(224, 196, 138, 0.16);
-  --mute: #9c8e7c;
+  --background: #f3eee6;
+  --foreground: #2a2622;
+  --gold: #a68448;
+  --gold-deep: #8c7040;
+  --ink: #2a2622;
+  --panel: rgba(255, 252, 247, 0.82);
+  --line: rgba(42, 38, 34, 0.1);
+  --mute: #6e665c;
 }
 
 @theme inline {
@@ -24,8 +24,7 @@ html {
 
 body {
   background:
-    radial-gradient(820px 460px at 12% -10%, rgba(184, 146, 78, 0.2), transparent 58%),
-    radial-gradient(640px 380px at 100% 110%, rgba(70, 42, 18, 0.35), transparent 55%),
+    radial-gradient(880px 420px at 0% -8%, rgba(176, 146, 90, 0.16), transparent 58%),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-outfit), sans-serif;
@@ -36,44 +35,25 @@ body {
 }
 
 ::selection {
-  background: rgba(224, 196, 138, 0.32);
-  color: #1a140c;
+  background: rgba(166, 132, 72, 0.28);
+  color: #1c1916;
 }
 
-.desk-panel {
+button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.panel {
   border-radius: 22px;
   border: 1px solid var(--line);
-  background:
-    linear-gradient(180deg, rgba(255, 248, 236, 0.04), rgba(255, 248, 236, 0.012)),
-    var(--panel);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
-}
-
-.handset {
-  border-radius: 38px;
-  padding: 10px;
-  background: linear-gradient(180deg, #3a3126 0%, #1a1612 18%, #0d0c0a 100%);
-  border: 1px solid rgba(224, 196, 138, 0.32);
-  box-shadow:
-    0 28px 70px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 236, 206, 0.18);
-}
-
-.handset-screen {
-  position: relative;
-  display: flex;
-  min-height: min(680px, calc(100svh - 6.5rem));
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 30px;
-  background:
-    radial-gradient(380px 240px at 50% 22%, rgba(196, 154, 74, 0.22), transparent 62%),
-    #0e0c0a;
+  background: var(--panel);
+  box-shadow: 0 18px 48px rgba(70, 48, 20, 0.05);
 }
 
 .desk-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(224, 196, 138, 0.35) transparent;
+  scrollbar-color: rgba(140, 112, 64, 0.45) transparent;
 }
 
 .desk-scroll::-webkit-scrollbar {
@@ -81,32 +61,97 @@ body {
 }
 
 .desk-scroll::-webkit-scrollbar-thumb {
-  background: rgba(224, 196, 138, 0.32);
+  background: rgba(140, 112, 64, 0.35);
   border-radius: 99px;
 }
 
-.call-orb {
-  display: grid;
-  height: 78px;
-  width: 78px;
-  place-items: center;
+.btn-primary,
+.btn-secondary,
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  color: #1a140c;
-  background: linear-gradient(180deg, #f3ddb0 0%, #d7b36a 48%, #b8924e 100%);
-  box-shadow:
-    0 10px 24px rgba(184, 146, 78, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
-.end-orb {
-  display: grid;
-  height: 78px;
-  width: 78px;
-  place-items: center;
+.btn-primary {
+  min-height: 58px;
+  padding: 0 28px;
+  background: #2a2622;
+  color: #f7f3ec;
+  font-size: 15px;
+}
+
+.btn-primary:hover {
+  background: #3c362f;
+}
+
+.btn-secondary {
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid rgba(42, 38, 34, 0.22);
+  background: transparent;
+  color: #2a2622;
+  font-size: 14px;
+}
+
+.btn-secondary:hover {
+  background: rgba(42, 38, 34, 0.04);
+}
+
+.btn-quiet {
+  min-height: 36px;
+  padding: 0 8px;
+  background: transparent;
+  color: #6e665c;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.btn-quiet:hover {
+  color: #2a2622;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
-  color: #fff8f6;
-  background: linear-gradient(180deg, #f07a68 0%, #c4473d 100%);
-  box-shadow:
-    0 10px 24px rgba(196, 71, 61, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  background: currentColor;
+}
+
+.status-dot[data-pulse="true"] {
+  animation: status-pulse 1.8s ease-in-out infinite;
+}
+
+.hot-lead {
+  animation: hot-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes hot-glow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.68;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot[data-pulse="true"],
+  .hot-lead {
+    animation: none;
+  }
 }

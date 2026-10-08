@@ -15,9 +15,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Shreedevi Jewellers · AI Sales Assistant",
+  title: "Shreedavi Jewellers · AI Sales Assistant",
   description:
-    "A conversational AI assistant for Shreedevi Jewellers — engage customers, understand requirements, and convert enquiries into showroom visits.",
+    "A conversational AI sales assistant for Shreedavi Jewellers — qualify enquiries, understand requirements, and arrange showroom visits.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
