@@ -402,7 +402,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         <div className="handset-screen px-6 pb-6 pt-5">
           <div className="mx-auto h-1.5 w-16 rounded-full bg-white/15" />
           <div className="mt-5 flex items-center justify-between text-[12px] text-[#b7aa9a]">
-            <span>Shreedavi voice</span>
+            <span>Shreedevi voice</span>
             <span className="rounded-full border border-[rgba(224,196,138,0.28)] px-2 py-0.5 text-[10px] text-[#e0c48a]">
               {live ? "Recording" : "HD voice"}
             </span>
@@ -411,7 +411,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <AiAvatar status={status} activity={live ? activity : "idle"} />
             <p className="font-serif text-[40px] leading-none text-[#f6efe4]">Maya</p>
-            <p className="mt-2 text-[13px] text-[#b7aa9a]">Sales caller · Shreedavi Jewellers</p>
+            <p className="mt-2 text-[13px] text-[#b7aa9a]">Sales caller · Shreedevi Jewellers</p>
 
             {live || ended ? (
               <p className="mt-5 font-serif text-[42px] tabular-nums leading-none text-[#f6efe4]">

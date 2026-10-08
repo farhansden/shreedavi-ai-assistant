@@ -77,7 +77,7 @@ export function startCallRecorder(session: object | null): ActiveRecorder | null
           const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
           resolve({
             url: URL.createObjectURL(blob),
-            filename: `shreedavi-call-${stamp}.${extension}`,
+            filename: `shreedevi-call-${stamp}.${extension}`,
           });
         };
 

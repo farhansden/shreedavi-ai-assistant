@@ -28,7 +28,7 @@ export function Header({ status }: { status: VoiceSessionStatus }) {
         </span>
         <div>
           <p className="font-serif text-[22px] leading-none tracking-[0.08em] text-[#f6efe4]">
-            Shreedavi
+            Shreedevi
           </p>
           <p className="mt-1 text-[11px] text-[#9c8e7c]">Voice sales desk</p>
         </div>
