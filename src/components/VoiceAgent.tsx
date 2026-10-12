@@ -24,6 +24,14 @@ import {
   startCallRecorder,
   type CallRecording,
 } from "@/lib/call-recording";
+import { buildSessionOverrides } from "@/lib/agent-prompt";
+import {
+  buildLanguageSessionReport,
+  detectSpokenLanguage,
+  formatOverrideError,
+  summarizeAsrMetadata,
+  type LanguageMode,
+} from "@/lib/language";
 import { formatDuration, getVoiceAgentId } from "@/lib/voice-session";
 import type {
   SessionErrorKind,
@@ -42,6 +50,7 @@ type VoiceAgentProps = {
   durationSeconds: number;
   errorKind: SessionErrorKind | null;
   language: string;
+  languageMode: LanguageMode;
   intent: string;
   sentiment: string;
   recording: CallRecording | null;
@@ -68,6 +77,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       durationSeconds,
       errorKind,
       language,
+      languageMode,
       intent,
       sentiment,
       recording,
@@ -91,6 +101,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     const recordingEpochRef = useRef(0);
     onEventRef.current = onEvent;
     onRecordingRef.current = onRecording;
+    const languageReportRef = useRef(buildLanguageSessionReport(languageMode));
     const rawConversation = useRawConversation();
     const [captureState, setCaptureState] = useState<"open" | "saving" | "ready" | "missing">("open");
 
@@ -160,6 +171,14 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       onError: (message) => {
         if (endedByUserRef.current || suppressDisconnectRef.current > 0) return;
         const text = typeof message === "string" ? message : "";
+        if (/override|language|prompt/i.test(text)) {
+          languageReportRef.current = {
+            ...languageReportRef.current,
+            error: formatOverrideError(text),
+          };
+          emit({ type: "language-session", report: languageReportRef.current });
+          console.warn("[Shreedevi language]", text);
+        }
         const microphoneDenied =
           /microphone|permission|notallowed|denied|getUserMedia/i.test(text);
         const kind: SessionErrorKind = microphoneDenied
@@ -178,12 +197,15 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         const isAgent = payload.role === "agent" || payload.source === "ai";
         if (!isAgent) {
           activeAgentIdRef.current = null;
+          const detected = detectSpokenLanguage(text);
           emit({
             type: "transcript",
             message: {
               id: `customer-${payload.event_id}`,
               speaker: "customer",
               text,
+              language: detected.language,
+              languageConfidence: detected.confidence,
             },
           });
           return;
@@ -195,9 +217,16 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
             ? streamedId
             : (responseId ?? streamedId ?? `ai-${payload.event_id}`);
         activeAgentIdRef.current = id;
+        const detected = detectSpokenLanguage(text);
         emit({
           type: "transcript",
-          message: { id, speaker: "ai", text },
+          message: {
+            id,
+            speaker: "ai",
+            text,
+            language: detected.language,
+            languageConfidence: detected.confidence,
+          },
         });
       },
       onAgentChatResponsePart: (part) => {
@@ -216,9 +245,16 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         }
         const text = agentDraftRef.current[id]?.trim();
         if (!text) return;
+        const detected = detectSpokenLanguage(text);
         emit({
           type: "transcript",
-          message: { id, speaker: "ai", text },
+          message: {
+            id,
+            speaker: "ai",
+            text,
+            language: detected.language,
+            languageConfidence: detected.confidence,
+          },
         });
       },
       onAgentResponseCorrection: (event) => {
@@ -228,10 +264,34 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
           ? `ai-${event.response_id}`
           : (activeAgentIdRef.current ?? `ai-${event.event_id}`);
         activeAgentIdRef.current = id;
+        const detected = detectSpokenLanguage(text);
         emit({
           type: "transcript",
-          message: { id, speaker: "ai", text },
+          message: {
+            id,
+            speaker: "ai",
+            text,
+            language: detected.language,
+            languageConfidence: detected.confidence,
+          },
         });
+      },
+      onConversationMetadata: (metadata) => {
+        const asrNote = summarizeAsrMetadata(metadata);
+        if (!asrNote) return;
+        languageReportRef.current = {
+          ...languageReportRef.current,
+          asrNote,
+        };
+        emit({ type: "language-session", report: languageReportRef.current });
+      },
+      onAsrInitiationMetadata: (metadata) => {
+        const asrNote = summarizeAsrMetadata(metadata);
+        languageReportRef.current = {
+          ...languageReportRef.current,
+          asrNote,
+        };
+        emit({ type: "language-session", report: languageReportRef.current });
       },
       onModeChange: ({ mode }) => {
         emit({
@@ -341,12 +401,19 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         return;
       }
 
+      const overrides = buildSessionOverrides(languageMode);
+      const report = buildLanguageSessionReport(languageMode);
+      languageReportRef.current = report;
+      emit({ type: "language-session", report });
+      console.info("[Shreedevi language]", report);
+
       endSession();
       startSession({
         agentId,
         connectionType: "websocket",
+        overrides,
       });
-    }, [emit, endSession, startSession, status]);
+    }, [emit, endSession, languageMode, startSession, status]);
 
     const endConversation = useCallback(() => {
       endedByUserRef.current = true;

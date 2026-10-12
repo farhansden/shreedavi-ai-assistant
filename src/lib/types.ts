@@ -1,3 +1,9 @@
+import type {
+  LanguageConfidence as DetectedLanguageConfidence,
+  LanguageSessionReport,
+  SpokenLanguage,
+} from "./language";
+
 export type VoiceSessionStatus =
   | "idle"
   | "connecting"
@@ -12,14 +18,20 @@ export type SessionErrorKind = "microphone" | "connection" | "interrupted";
 
 export type TranscriptSpeaker = "ai" | "customer";
 
+export type SpokenLanguageLabel = SpokenLanguage;
+export type LanguageConfidence = DetectedLanguageConfidence;
+
 export type TranscriptMessage = {
   id: string;
   speaker: TranscriptSpeaker;
   text: string;
   timestamp?: string;
+  language?: SpokenLanguageLabel | null;
+  languageConfidence?: LanguageConfidence;
 };
 
 export type InsightKey =
+  | "language"
   | "product"
   | "occasion"
   | "budget"
@@ -39,6 +51,7 @@ export type InsightItem = {
 export type CallSummary = {
   customer: string;
   duration: string;
+  language: string;
   product: string;
   occasion: string;
   budget: string;
@@ -50,6 +63,8 @@ export type CallSummary = {
   aiSummary: string;
 };
 
+export type { LanguageSessionReport };
+
 export type VoiceSessionEvent =
   | { type: "status"; status: VoiceSessionStatus }
   | { type: "activity"; activity: VoiceActivity }
@@ -58,6 +73,7 @@ export type VoiceSessionEvent =
   | { type: "duration"; seconds: number }
   | { type: "summary-ready"; summary: CallSummary }
   | { type: "error"; kind: SessionErrorKind }
+  | { type: "language-session"; report: LanguageSessionReport }
   | { type: "reset" };
 
 export type VoiceSessionHandle = {

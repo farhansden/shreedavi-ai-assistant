@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { languageBadge } from "@/lib/language";
 import type { TranscriptMessage } from "@/lib/types";
 
 type TranscriptPanelProps = {
@@ -59,6 +60,12 @@ export function TranscriptPanel({ messages, active }: TranscriptPanelProps) {
                   {message.timestamp ? (
                     <span className="ml-2 tabular-nums">{message.timestamp}</span>
                   ) : null}
+                  <span className="ml-2">
+                    {languageBadge({
+                      language: message.language ?? null,
+                      confidence: message.languageConfidence ?? "uncertain",
+                    })}
+                  </span>
                 </p>
                 <p
                   className={`rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 text-[#f4eee6] ${

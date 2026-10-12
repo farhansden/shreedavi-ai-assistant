@@ -17,6 +17,7 @@ export function formatClock(date = new Date()): string {
 }
 
 export const INSIGHT_ORDER = [
+  "language",
   "product",
   "occasion",
   "budget",

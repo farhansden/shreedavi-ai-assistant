@@ -1,13 +1,19 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallSummaryModal } from "@/components/CallSummaryModal";
 import { Header } from "@/components/Header";
 import { InsightsPanel } from "@/components/InsightsPanel";
+import { LanguageTestingPanel } from "@/components/LanguageTestingPanel";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { VoiceAgent, type VoiceAgentHandle } from "@/components/VoiceAgent";
 import { releaseRecording, type CallRecording } from "@/lib/call-recording";
 import { buildCallSummary, displayValue, extractInsights } from "@/lib/insights";
+import {
+  buildLanguageSessionReport,
+  type LanguageMode,
+  type LanguageSessionReport,
+} from "@/lib/language";
 import { formatClock, formatDuration } from "@/lib/voice-session";
 import type {
   SessionErrorKind,
@@ -27,6 +33,15 @@ export function AssistantExperience() {
   const [errorKind, setErrorKind] = useState<SessionErrorKind | null>(null);
   const [recording, setRecording] = useState<CallRecording | null>(null);
   const [recordingSettled, setRecordingSettled] = useState(false);
+  const [languageMode, setLanguageMode] = useState<LanguageMode>("auto");
+  const languageModeRef = useRef(languageMode);
+  const [languageReport, setLanguageReport] = useState<LanguageSessionReport | null>(
+    null,
+  );
+
+  useEffect(() => {
+    languageModeRef.current = languageMode;
+  }, [languageMode]);
 
   const insights = useMemo(() => extractInsights(messages), [messages]);
   const summary = useMemo(() => {
@@ -48,6 +63,7 @@ export function AssistantExperience() {
           return null;
         });
         setRecordingSettled(false);
+        setLanguageReport(buildLanguageSessionReport(languageModeRef.current));
         break;
       case "error":
         setStatus("error");
@@ -82,6 +98,9 @@ export function AssistantExperience() {
       case "duration":
         setDurationSeconds(event.seconds);
         break;
+      case "language-session":
+        setLanguageReport(event.report);
+        break;
       default:
         break;
     }
@@ -111,6 +130,7 @@ export function AssistantExperience() {
             durationSeconds={durationSeconds}
             errorKind={errorKind}
             language={displayValue(insights.language)}
+            languageMode={languageMode}
             intent={displayValue(insights.intent)}
             sentiment={displayValue(insights.sentiment)}
             recording={recording}
@@ -120,6 +140,15 @@ export function AssistantExperience() {
           />
         </div>
         <div className="grid min-w-0 gap-6">
+          <LanguageTestingPanel
+            mode={languageMode}
+            disabled={status === "live" || status === "connecting"}
+            report={languageReport}
+            onModeChange={(next) => {
+              setLanguageMode(next);
+              setLanguageReport(buildLanguageSessionReport(next));
+            }}
+          />
           <TranscriptPanel
             messages={messages}
             active={status === "live" || status === "connecting"}

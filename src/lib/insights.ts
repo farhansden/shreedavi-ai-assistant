@@ -1,3 +1,4 @@
+import { detectPreferredLanguage, languageBadge } from "./language";
 import type { CallSummary, TranscriptMessage } from "./types";
 
 export type LeadStatus = "HOT" | "WARM" | "COLD";
@@ -48,6 +49,25 @@ const WORD_NUMBERS: Record<string, number> = {
   seventy: 70,
   eighty: 80,
   ninety: 90,
+  एक: 1,
+  दो: 2,
+  तीन: 3,
+  चार: 4,
+  पांच: 5,
+  पाँच: 5,
+  छह: 6,
+  सात: 7,
+  आठ: 8,
+  नौ: 9,
+  दस: 10,
+  बीस: 20,
+  तीस: 30,
+  चालीस: 40,
+  पचास: 50,
+  साठ: 60,
+  सत्तर: 70,
+  अस्सी: 80,
+  नब्बे: 90,
 };
 
 const PRODUCTS: { pattern: RegExp; label: string }[] = [
@@ -59,41 +79,45 @@ const PRODUCTS: { pattern: RegExp; label: string }[] = [
   { pattern: /\bplatinum\s+rings?\b/i, label: "Platinum Ring" },
   { pattern: /\bbridal\s+sets?\b/i, label: "Bridal Set" },
   { pattern: /\bwedding\s+sets?\b|\bjewellery\s+sets?\b/i, label: "Wedding Set" },
-  { pattern: /\bmangalsutras?\b/i, label: "Mangalsutra" },
-  { pattern: /\bnecklaces?\b/i, label: "Necklace" },
-  { pattern: /\bpendants?\b/i, label: "Pendant" },
-  { pattern: /\bearrings?\b/i, label: "Earrings" },
-  { pattern: /\bjhumkas?\b/i, label: "Jhumkas" },
-  { pattern: /\bbangles?\b/i, label: "Bangles" },
-  { pattern: /\bbracelets?\b/i, label: "Bracelet" },
-  { pattern: /\bchains?\b/i, label: "Chain" },
-  { pattern: /\bchokers?\b/i, label: "Choker" },
-  { pattern: /\bpayals?\b|\banklets?\b/i, label: "Payal" },
-  { pattern: /\bnose\s+rings?\b|\bnaths?\b/i, label: "Nose Ring" },
-  { pattern: /\bmaang\s+tikkas?\b|\btikkas?\b/i, label: "Maang Tikka" },
-  { pattern: /\bgold\s+coins?\b/i, label: "Gold Coin" },
-  { pattern: /\bdiamonds?\b/i, label: "Diamond Jewellery" },
-  { pattern: /\bgold\b/i, label: "Gold Jewellery" },
-  { pattern: /\brings?\b/i, label: "Ring" },
+  { pattern: /ब्राइडल\s*सेट|शादी\s*सेट|ब्याव\s*र[ोा]\s*सेट|लगन\s*र[ोा]\s*सेट/, label: "Bridal Set" },
+  { pattern: /\bmangalsutras?\b|मंगलसूत्र/i, label: "Mangalsutra" },
+  { pattern: /\bnecklaces?\b|हार|नेकलेस/i, label: "Necklace" },
+  { pattern: /\bpendants?\b|पेंडेंट|लॉकेट/i, label: "Pendant" },
+  { pattern: /\bearrings?\b|बालिय(?:ाँ|ां)|इयरिंग्स/i, label: "Earrings" },
+  { pattern: /\bjhumkas?\b|झुमक[ेा]/i, label: "Jhumkas" },
+  { pattern: /\bbangles?\b|कंगन|चूड़(?:ी|ियाँ|ियां)/i, label: "Bangles" },
+  { pattern: /\bbracelets?\b|ब्रेसलेट/i, label: "Bracelet" },
+  { pattern: /\bchains?\b|चैन|चेन/i, label: "Chain" },
+  { pattern: /\bchokers?\b|चोकर/i, label: "Choker" },
+  { pattern: /\bpayals?\b|\banklets?\b|पायल/i, label: "Payal" },
+  { pattern: /\bnose\s+rings?\b|\bnaths?\b|नथ/i, label: "Nose Ring" },
+  { pattern: /\bmaang\s+tikkas?\b|\btikkas?\b|मांग\s*टीका|टीका/i, label: "Maang Tikka" },
+  { pattern: /\bgold\s+coins?\b|सोने\s*का\s*सिक्का/i, label: "Gold Coin" },
+  { pattern: /जेवरा?त|जेवर|आभूषण|गहने/, label: "Jewellery" },
+  { pattern: /\bdiamonds?\b|हीरा|हीरे/i, label: "Diamond Jewellery" },
+  { pattern: /\bsilver\b|चांदी|चाँदी/i, label: "Silver Jewellery" },
+  { pattern: /\bgold\b|सोना|सोने/i, label: "Gold Jewellery" },
+  { pattern: /\brings?\b|अंगूठ(?:ी|ियाँ|ियां)/i, label: "Ring" },
 ];
 
 const OCCASIONS: { pattern: RegExp; label: string }[] = [
-  { pattern: /\banniversar(?:y|ies)\b/i, label: "Anniversary" },
-  { pattern: /\bengagement\b/i, label: "Engagement" },
-  { pattern: /\bwedding\b|\bmarriage\b/i, label: "Wedding" },
-  { pattern: /\bbirthday\b/i, label: "Birthday" },
-  { pattern: /\bdiwali\b/i, label: "Diwali" },
-  { pattern: /\bakshaya\s+tritiya\b/i, label: "Akshaya Tritiya" },
-  { pattern: /\bkarva\s+chauth\b/i, label: "Karva Chauth" },
+  { pattern: /\banniversar(?:y|ies)\b|सालगिरह|एनिवर्सरी/i, label: "Anniversary" },
+  { pattern: /\bengagement\b|सगाई/i, label: "Engagement" },
+  { pattern: /\bwedding\b|\bmarriage\b|शादी|विवाह|ब्याव|लगन/i, label: "Wedding" },
+  { pattern: /\bbirthday\b|जन्मदिन|बर्थडे/i, label: "Birthday" },
+  { pattern: /\bdiwali\b|दिवाली/i, label: "Diwali" },
+  { pattern: /\bakshaya\s+tritiya\b|अक्षय\s*तृतीया/i, label: "Akshaya Tritiya" },
+  { pattern: /\bkarva\s+chauth\b|करवा\s*चौथ/i, label: "Karva Chauth" },
   { pattern: /\bvalentine/i, label: "Valentine's Day" },
-  { pattern: /\breception\b/i, label: "Reception" },
+  { pattern: /\breception\b|रिसेप्शन/i, label: "Reception" },
+  { pattern: /\bgift(?:ing)?\b|तोहफा|भेंट|गिफ्ट/i, label: "Gifting" },
 ];
 
 const NAME_STOP =
   /^(looking|interested|thinking|planning|calling|trying|here|there|good|fine|okay|ok)$/i;
 
-const HINGLISH =
-  /\b(haan|bhaiya|abhi|chahiye|kitna|kal|parso|achha|achchha|accha)\b/i;
+const NAME_STOP_HI =
+  /^(देख|देखना|चाहिए|बात|यहाँ|वहाँ|ठीक|अच्छा)$/;
 
 type Hit = { start: number; end: number; label: string };
 
@@ -107,7 +131,7 @@ function customerText(messages: TranscriptMessage[]): string {
 function parseNumberToken(token: string): number | null {
   const cleaned = token.replace(/,/g, "");
   if (/^\d+(?:\.\d+)?$/.test(cleaned)) return Number(cleaned);
-  return WORD_NUMBERS[token.toLowerCase()] ?? null;
+  return WORD_NUMBERS[token.toLowerCase()] ?? WORD_NUMBERS[token] ?? null;
 }
 
 function formatInr(amount: number): string {
@@ -157,7 +181,8 @@ function lastLabel(
 
 function extractBudget(text: string): string | null {
   const rules: { pattern: RegExp; label: string }[] = [];
-  const lakh = /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*lakhs?\b/gi;
+  const lakh =
+    /(?:₹|rs\.?|rupees?|रुपये|रुपए)?\s*([a-zA-Z\u0900-\u097F]+|\d+(?:\.\d+)?)\s*(?:lakhs?\b|लाख)/gi;
   for (const match of text.matchAll(lakh)) {
     const value = parseNumberToken(match[1]);
     if (!value) continue;
@@ -168,7 +193,7 @@ function extractBudget(text: string): string | null {
   }
 
   const thousand =
-    /(?:₹|rs\.?|rupees?)?\s*([a-z]+|\d+(?:\.\d+)?)\s*(?:thousand|k)\b/gi;
+    /(?:₹|rs\.?|rupees?|रुपये|रुपए)?\s*([a-zA-Z\u0900-\u097F]+|\d+(?:\.\d+)?)\s*(?:thousand\b|k\b|हज़ार|हजार)/gi;
   for (const match of text.matchAll(thousand)) {
     const value = parseNumberToken(match[1]);
     if (!value) continue;
@@ -203,11 +228,14 @@ function extractTimeline(text: string): string | null {
       pattern: /\b(?:in\s+the\s+next\s+|next\s+|within\s+|in\s+)?(?:two|2)\s+weeks?\b/i,
       label: "2–3 Weeks",
     },
-    { pattern: /\bnext\s+month\b/i, label: "Next Month" },
-    { pattern: /\bthis\s+month\b/i, label: "This Month" },
-    { pattern: /\bnext\s+week\b/i, label: "Next Week" },
-    { pattern: /\bthis\s+week\b/i, label: "This Week" },
-    { pattern: /\bas soon as possible\b|\basap\b/i, label: "As soon as possible" },
+    { pattern: /\bnext\s+month\b|अगले\s*महीने|अगला\s*महीनो/i, label: "Next Month" },
+    { pattern: /\bthis\s+month\b|इस\s*महीने|इण\s*महीने/i, label: "This Month" },
+    { pattern: /\bnext\s+week\b|अगले\s*हफ्ते|अगला\s*हफ्तो/i, label: "Next Week" },
+    { pattern: /\bthis\s+week\b|इस\s*हफ्ते|इण\s*हफ्ते/i, label: "This Week" },
+    {
+      pattern: /\bas soon as possible\b|\basap\b|जल्दी\s*(?:लेना|खरीदना)|अभी\s*(?:लेना|खरीदना|लेवो)/i,
+      label: "As soon as possible",
+    },
   ];
 
   const range =
@@ -245,7 +273,7 @@ function titleCase(value: string): string {
 
 function extractVisit(text: string): string | null {
   const dayPattern =
-    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|this weekend|weekend)(?:\s+(morning|afternoon|evening|night))?\b/gi;
+    /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|this weekend|weekend|सोमवार|मंगलवार|बुधवार|गुरुवार|शुक्रवार|शनिवार|रविवार|कल|परसों|वीकेंड)(?:\s+(morning|afternoon|evening|night|सुबह|दोपहर|शाम|रात))?\b/gi;
   let day: { label: string; period?: string } | null = null;
   for (const match of text.matchAll(dayPattern)) {
     day = { label: titleCase(match[1]), period: match[2] };
@@ -260,7 +288,7 @@ function extractVisit(text: string): string | null {
 
   let period: string | null = day?.period ? titleCase(day.period) : null;
   if (!period) {
-    const periodPattern = /\b(morning|afternoon|evening|night)\b/gi;
+    const periodPattern = /\b(morning|afternoon|evening|night|सुबह|दोपहर|शाम|रात)\b/gi;
     for (const match of text.matchAll(periodPattern)) period = titleCase(match[1]);
   }
 
@@ -269,32 +297,45 @@ function extractVisit(text: string): string | null {
   if (day) parts.push(day.label);
   if (time) parts.push(time);
   else if (period) parts.push(period);
+  const callback =
+    /\b(callback|call back|phone back|वापस\s*कॉल|फोन\s*करज[ोे]|कॉलबैक)\b/i.test(
+      text,
+    );
+  if (callback) parts.unshift("Callback");
   return parts.join(" · ");
 }
 
 function extractShowroomInterest(text: string): boolean {
-  return /\b(showroom|appointment|visit|come in|drop by|see (?:it |them )?in person|come over)\b/i.test(
+  return /\b(showroom|appointment|visit|come in|drop by|see (?:it |them )?in person|come over)\b|शोरूम|दुकान|आवूंला|आऊँगा|आउंगा|मिलण/i.test(
     text,
   );
 }
 
 function extractName(text: string): string | null {
   const matches = text.matchAll(
-    /\b(?:my name is|this is|i am|i['’]m)\s+([A-Za-z]+(?:\s+[A-Za-z]+){0,2})\b/gi,
+    /\b(?:my name is|this is|i am|i['’]m|मेरा नाम|म्हारो नाम)\s+([A-Za-z\u0900-\u097F]+(?:\s+[A-Za-z\u0900-\u097F]+){0,2})\b/gi,
   );
   let name: string | null = null;
   for (const match of matches) {
     const parts = match[1].trim().split(/\s+/);
-    if (parts.some((part) => NAME_STOP.test(part))) continue;
-    if (!parts.every((part) => /^[A-Z][a-z]+$/.test(part))) continue;
+    if (parts.some((part) => NAME_STOP.test(part) || NAME_STOP_HI.test(part))) {
+      continue;
+    }
+    if (
+      !parts.every(
+        (part) => /^[A-Z][a-z]+$/.test(part) || /^[\u0900-\u097F]{2,}$/.test(part),
+      )
+    ) {
+      continue;
+    }
     name = parts.join(" ");
   }
   return name;
 }
 
 function extractPurchaseIntent(text: string): boolean {
-  const cleaned = text.replace(/\bnot interested\b/gi, " ");
-  return /\b(want to buy|looking|interested|purchase|purchasing|buy)\b/i.test(
+  const cleaned = text.replace(/\bnot interested\b|दिलचस्पी नहीं|कोनी चाहिए/gi, " ");
+  return /\b(want to buy|looking|interested|purchase|purchasing|buy)\b|लेना है|खरीदना|चाहिए|चाहिये|लेवो है|लियो है|जोइजै/i.test(
     cleaned,
   );
 }
@@ -302,9 +343,9 @@ function extractPurchaseIntent(text: string): boolean {
 function extractSentiment(text: string): string | null {
   if (!text.trim()) return null;
   const negative =
-    /\b(expensive|costly|too much|not sure|maybe later|not interested|no thanks|cheap|don't like|dont like)\b/gi;
+    /\b(expensive|costly|too much|not sure|maybe later|not interested|no thanks|cheap|don't like|dont like)\b|महंगा|महँगा|बाद में|दिलचस्पी नहीं|कोनी/gi;
   const positive =
-    /\b(thank|thanks|perfect|great|love|wonderful|sure|interested|sounds good|that works|beautiful|nice|happy|good)\b/gi;
+    /\b(thank|thanks|perfect|great|love|wonderful|sure|interested|sounds good|that works|beautiful|nice|happy|good)\b|धन्यवाद|बहुत अच्छा|सुंदर|पसंद|घणी खुशी|ठीक है/gi;
   const lastNegative = [...text.matchAll(negative)].at(-1);
   const lastPositive = [...text.matchAll(positive)].at(-1);
   if (!lastNegative && !lastPositive) return null;
@@ -316,9 +357,13 @@ function extractSentiment(text: string): string | null {
   return lastNegative ? "Negative" : "Positive";
 }
 
-function extractLanguage(text: string): string | null {
-  if (!text.trim()) return null;
-  return HINGLISH.test(text) ? "Hinglish" : "English";
+function extractLanguage(messages: TranscriptMessage[]): string | null {
+  const spoken = messages
+    .filter((message) => message.speaker === "customer")
+    .map((message) => message.text);
+  const detected = detectPreferredLanguage(spoken);
+  if (detected.confidence === "uncertain") return null;
+  return languageBadge(detected);
 }
 
 function scoreLead(insights: {
@@ -354,7 +399,6 @@ export function extractInsights(
   messages: TranscriptMessage[],
 ): ConversationInsights {
   const spoken = customerText(messages);
-  const transcript = messages.map((message) => message.text).join(" ");
   const product = lastLabel(spoken, PRODUCTS);
   const occasion = lastLabel(spoken, OCCASIONS);
   const budget = extractBudget(spoken);
@@ -364,7 +408,7 @@ export function extractInsights(
   const purchaseIntent = extractPurchaseIntent(spoken);
   const customerName = extractName(spoken);
   const sentiment = extractSentiment(spoken);
-  const language = extractLanguage(transcript);
+  const language = extractLanguage(messages);
   const { leadScore, leadStatus } = scoreLead({
     product,
     budget,
@@ -463,6 +507,7 @@ export function buildCallSummary(
   return {
     customer: insights.customerName?.trim() || "Guest Customer",
     duration,
+    language: displayValue(insights.language),
     product: displayValue(insights.product),
     occasion: displayValue(insights.occasion),
     budget: displayValue(insights.budget),
@@ -478,8 +523,13 @@ export function buildCallSummary(
 export function insightRows(insights: ConversationInsights) {
   return [
     {
+      key: "language",
+      label: "Preferred language",
+      value: displayValue(insights.language),
+    },
+    {
       key: "product",
-      label: "Product Interest",
+      label: "Jewellery category",
       value: displayValue(insights.product),
     },
     { key: "occasion", label: "Occasion", value: displayValue(insights.occasion) },
@@ -491,7 +541,7 @@ export function insightRows(insights: ConversationInsights) {
     },
     {
       key: "visit",
-      label: "Preferred Visit",
+      label: "Preferred visit or callback",
       value: displayValue(insights.visit),
     },
     { key: "intent", label: "Intent", value: displayValue(insights.intent) },
