@@ -133,6 +133,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       startSession,
       endSession,
       sendContextualUpdate,
+      setMuted,
       status: sessionStatus,
       getInputByteFrequencyData,
       getOutputByteFrequencyData,
@@ -145,15 +146,23 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         emit({ type: "duration", seconds: 0 });
         emit({ type: "status", status: "live" });
         emit({ type: "activity", activity: "listening" });
-        // Only nudge language when the tester picks a specific mode.
-        // Auto-detect leaves the ElevenLabs dashboard agent alone.
+        try {
+          setMuted(false);
+        } catch {
+          // Session may still be wiring the mic controller.
+        }
+        // Soft language hint only for explicit picker modes, and only after
+        // the mic path is up — avoid racing the first user audio chunks.
         const hint = buildLanguageContextUpdate(languageModeForSessionRef.current);
         if (hint) {
-          try {
-            sendContextualUpdateRef.current(hint);
-          } catch (error) {
-            console.warn("[Shreedevi language] contextual update skipped", error);
-          }
+          window.setTimeout(() => {
+            if (!mountedRef.current || !wasLiveRef.current) return;
+            try {
+              sendContextualUpdateRef.current(hint);
+            } catch (error) {
+              console.warn("[Shreedevi language] contextual update skipped", error);
+            }
+          }, 800);
         }
       },
       onDisconnect: (details) => {
@@ -463,13 +472,29 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       emit({ type: "language-session", report });
       console.info("[Shreedevi language]", report);
 
-      endSession();
-      startSession({
-        agentId,
-        connectionType: "websocket",
-        ...(overrides ? { overrides } : {}),
-      });
-    }, [emit, endSession, languageMode, startSession, status]);
+      const begin = () => {
+        if (!mountedRef.current) return;
+        startSession({
+          agentId,
+          connectionType: "websocket",
+          ...(overrides ? { overrides } : {}),
+        });
+      };
+
+      // Only tear down if a prior session is still open. Always calling
+      // endSession() first can leave the SDK connect lock set, so the next
+      // startSession becomes a no-op and the mic never attaches.
+      const needsTeardown =
+        sessionStatus === "connecting" || sessionStatus === "connected";
+      if (needsTeardown) {
+        suppressDisconnectRef.current += 1;
+        endSession();
+        window.setTimeout(begin, 350);
+        return;
+      }
+
+      begin();
+    }, [emit, endSession, languageMode, sessionStatus, startSession, status]);
 
     const endConversation = useCallback(() => {
       endedByUserRef.current = true;
