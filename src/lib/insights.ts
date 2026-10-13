@@ -1,4 +1,4 @@
-import { detectPreferredLanguage, languageBadge } from "./language";
+import { detectPreferredLanguage } from "./language";
 import type { CallSummary, TranscriptMessage } from "./types";
 
 export type LeadStatus = "HOT" | "WARM" | "COLD";
@@ -362,8 +362,8 @@ function extractLanguage(messages: TranscriptMessage[]): string | null {
     .filter((message) => message.speaker === "customer")
     .map((message) => message.text);
   const detected = detectPreferredLanguage(spoken);
-  if (detected.confidence === "uncertain") return null;
-  return languageBadge(detected);
+  if (detected.confidence !== "high" || !detected.language) return null;
+  return detected.language;
 }
 
 function scoreLead(insights: {

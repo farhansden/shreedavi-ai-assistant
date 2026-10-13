@@ -58,9 +58,9 @@ export const LANGUAGE_MODE_OPTIONS: {
   id: LanguageMode;
   label: string;
 }[] = [
-  { id: "auto", label: "Auto-detect" },
+  { id: "auto", label: "Auto" },
   { id: "en", label: "English" },
-  { id: "hi", label: "Hindi / Hinglish" },
+  { id: "hi", label: "Hindi" },
   { id: "mwr", label: "Marwari" },
 ];
 
