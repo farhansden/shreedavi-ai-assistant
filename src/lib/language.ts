@@ -314,41 +314,66 @@ export function engineLanguageForMode(
   return null;
 }
 
+export function agentOverridesEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ELEVENLABS_ALLOW_OVERRIDES === "true";
+}
+
 export function limitationForMode(mode: LanguageMode): string | null {
+  const overrideNote = agentOverridesEnabled()
+    ? null
+    : "Prompt/language overrides are off so Maya can connect. Set NEXT_PUBLIC_ELEVENLABS_ALLOW_OVERRIDES=true only after enabling System prompt, First message, and Language in the ElevenLabs agent Security tab.";
+
   if (mode === "mwr") {
-    return "Marwari is not a first-class ElevenLabs ASR/TTS language. This session uses Hindi (`hi`) for recognition and speech, with Marwari instructions in the prompt. The model may transcribe Marwari as Hindi, and spoken Marwari may use Hindi phonetics. Do not treat that as fluent Marwari.";
+    return [
+      "Marwari is not a first-class ElevenLabs ASR/TTS language. Recognition and speech usually follow Hindi (`hi`). Do not treat that as fluent Marwari.",
+      overrideNote,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
   if (mode === "hi") {
-    return "Hindi is configured on this agent as language preset `hi`. Hinglish is handled in the prompt. The documented `hinglish_mode` flag is not sent because it is not a supported client override field.";
+    return [
+      "Hindi is configured on this agent as language preset `hi`. Without Security overrides enabled, the call uses the dashboard agent settings and a session language hint after connect.",
+      overrideNote,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
   if (mode === "auto") {
-    return "Auto-detect does not send an ElevenLabs language code. The agent stays on its dashboard default (English) unless it already has language detection configured. Hindi is available as a preset; Marwari is not.";
+    return [
+      "Auto-detect stays on the agent dashboard default (English) unless the agent already has language detection. Hindi is a preset; Marwari is not.",
+      overrideNote,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
-  return null;
+  return overrideNote;
 }
 
 export function buildLanguageSessionReport(
   mode: LanguageMode,
   extras?: Partial<Pick<LanguageSessionReport, "asrNote" | "error">>,
 ): LanguageSessionReport {
-  const engineLanguage = engineLanguageForMode(mode);
-  const engineLanguageLabel =
-    engineLanguage === "en"
+  const overridesOn = agentOverridesEnabled();
+  const engineLanguage = overridesOn ? engineLanguageForMode(mode) : null;
+  const engineLanguageLabel = overridesOn
+    ? engineLanguage === "en"
       ? "English (en)"
       : engineLanguage === "hi"
         ? mode === "mwr"
           ? "Hindi (hi), standing in for Marwari"
           : "Hindi (hi)"
-        : "Agent default (English)";
+        : "Agent default (English)"
+    : "Dashboard agent (overrides off)";
 
   return {
     mode,
     engineLanguage,
     engineLanguageLabel,
     marwariFirstClass: false,
-    promptOverrideAttempted: true,
-    firstMessageOverrideAttempted: mode !== "auto",
-    asrKeywordsAttempted: true,
+    promptOverrideAttempted: overridesOn,
+    firstMessageOverrideAttempted: overridesOn && mode !== "auto",
+    asrKeywordsAttempted: overridesOn,
     limitation: limitationForMode(mode),
     asrNote: extras?.asrNote ?? null,
     error: extras?.error ?? null,

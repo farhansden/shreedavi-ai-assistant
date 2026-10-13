@@ -1,5 +1,9 @@
-import type { LanguageMode, SessionOverrides } from "@/lib/language";
-import { JEWELLERY_ASR_KEYWORDS } from "@/lib/language";
+import {
+  agentOverridesEnabled,
+  JEWELLERY_ASR_KEYWORDS,
+  type LanguageMode,
+  type SessionOverrides,
+} from "@/lib/language";
 
 const CORE_PROMPT = `You are Maya, a warm sales caller for Shreedevi Jewellers in Kalyan. You are speaking with a customer on a live phone call, the way a respectful showroom salesperson would.
 
@@ -78,7 +82,9 @@ export const FIRST_MESSAGES: Record<Exclude<LanguageMode, "auto">, string> = {
   mwr: "राम राम सा, मैं Maya बोलूँ, कल्याण री श्रीदेवी ज्वेलर्स सूं। थारे खातर नयाँ त्योहार रो जेवरात आयो है। थाने अभी थोड़ी बात करण रो मौको ठीक है के?",
 };
 
-export function buildSessionOverrides(mode: LanguageMode): SessionOverrides {
+export function buildSessionOverrides(mode: LanguageMode): SessionOverrides | undefined {
+  if (!agentOverridesEnabled()) return undefined;
+
   const prompt = buildAgentPrompt(mode);
   const overrides: SessionOverrides = {
     agent: {
@@ -110,4 +116,8 @@ export function buildSessionOverrides(mode: LanguageMode): SessionOverrides {
   }
 
   return overrides;
+}
+
+export function buildLanguageContextUpdate(mode: LanguageMode): string {
+  return `${languageDirective(mode)} Prefer the customer's spoken language when it is clear. Do not invent prices, stock, discounts, or store policies.`;
 }

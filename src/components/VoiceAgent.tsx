@@ -24,7 +24,10 @@ import {
   startCallRecorder,
   type CallRecording,
 } from "@/lib/call-recording";
-import { buildSessionOverrides } from "@/lib/agent-prompt";
+import {
+  buildLanguageContextUpdate,
+  buildSessionOverrides,
+} from "@/lib/agent-prompt";
 import {
   buildLanguageSessionReport,
   detectSpokenLanguage,
@@ -102,6 +105,10 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     onEventRef.current = onEvent;
     onRecordingRef.current = onRecording;
     const languageReportRef = useRef(buildLanguageSessionReport(languageMode));
+    const overrideRetryRef = useRef(false);
+    const languageModeForSessionRef = useRef(languageMode);
+    const startSessionRef = useRef<(options?: object) => void>(() => {});
+    const sendContextualUpdateRef = useRef<(text: string) => void>(() => {});
     const rawConversation = useRawConversation();
     const [captureState, setCaptureState] = useState<"open" | "saving" | "ready" | "missing">("open");
 
@@ -125,22 +132,57 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     const {
       startSession,
       endSession,
+      sendContextualUpdate,
       status: sessionStatus,
       getInputByteFrequencyData,
       getOutputByteFrequencyData,
     } = useConversation({
       micMuted: false,
       onConnect: () => {
+        overrideRetryRef.current = false;
         secondsRef.current = 0;
         wasLiveRef.current = true;
         emit({ type: "duration", seconds: 0 });
         emit({ type: "status", status: "live" });
         emit({ type: "activity", activity: "listening" });
+        try {
+          sendContextualUpdateRef.current(
+            buildLanguageContextUpdate(languageModeForSessionRef.current),
+          );
+        } catch (error) {
+          console.warn("[Shreedevi language] contextual update skipped", error);
+        }
       },
       onDisconnect: (details) => {
         if (suppressDisconnectRef.current > 0) {
           suppressDisconnectRef.current -= 1;
           endedByUserRef.current = false;
+          return;
+        }
+        if (
+          overrideRetryRef.current &&
+          !endedByUserRef.current &&
+          !wasLiveRef.current
+        ) {
+          overrideRetryRef.current = false;
+          reportedErrorRef.current = null;
+          languageReportRef.current = {
+            ...buildLanguageSessionReport(languageModeForSessionRef.current),
+            error:
+              "ElevenLabs rejected session overrides. Reconnecting with the dashboard agent so Maya can answer.",
+          };
+          emit({ type: "language-session", report: languageReportRef.current });
+          console.warn("[Shreedevi language] retrying without overrides");
+          const agentId = getVoiceAgentId();
+          if (!agentId) {
+            emit({ type: "error", kind: "connection" });
+            return;
+          }
+          emit({ type: "status", status: "connecting" });
+          startSessionRef.current({
+            agentId,
+            connectionType: "websocket",
+          });
           return;
         }
         if (reportedErrorRef.current) {
@@ -170,6 +212,10 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       },
       onError: (message) => {
         if (endedByUserRef.current || suppressDisconnectRef.current > 0) return;
+        if (overrideRetryRef.current && !wasLiveRef.current) {
+          // Let onDisconnect perform the no-override reconnect.
+          return;
+        }
         const text = typeof message === "string" ? message : "";
         if (/override|language|prompt/i.test(text)) {
           languageReportRef.current = {
@@ -302,6 +348,11 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
     });
 
     useEffect(() => {
+      startSessionRef.current = startSession;
+      sendContextualUpdateRef.current = sendContextualUpdate;
+    }, [sendContextualUpdate, startSession]);
+
+    useEffect(() => {
       mountedRef.current = true;
       return () => {
         mountedRef.current = false;
@@ -401,9 +452,11 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         return;
       }
 
+      languageModeForSessionRef.current = languageMode;
       const overrides = buildSessionOverrides(languageMode);
       const report = buildLanguageSessionReport(languageMode);
       languageReportRef.current = report;
+      overrideRetryRef.current = Boolean(overrides);
       emit({ type: "language-session", report });
       console.info("[Shreedevi language]", report);
 
@@ -411,7 +464,7 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
       startSession({
         agentId,
         connectionType: "websocket",
-        overrides,
+        ...(overrides ? { overrides } : {}),
       });
     }, [emit, endSession, languageMode, startSession, status]);
 
