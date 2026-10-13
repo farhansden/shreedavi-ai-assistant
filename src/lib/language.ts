@@ -341,7 +341,7 @@ export function limitationForMode(mode: LanguageMode): string | null {
   }
   if (mode === "auto") {
     return [
-      "Auto-detect stays on the agent dashboard default (English) unless the agent already has language detection. Hindi is a preset; Marwari is not.",
+      "Auto-detect uses the original ElevenLabs dashboard agent with no language hint injected. Conversation quality matches the pre-Marwari setup. Hindi is a preset on the agent; Marwari is not first-class ASR/TTS.",
       overrideNote,
     ]
       .filter(Boolean)

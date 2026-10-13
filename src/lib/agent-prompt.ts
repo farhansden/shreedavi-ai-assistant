@@ -42,6 +42,8 @@ Languages:
 - Do not assume every Rajasthani-speaking customer speaks Marwari. If unsure, politely ask whether they prefer Marwari, Hindi, or English.
 - Handle imperfect grammar, regional variation, and mixed speech as well as you can.
 - Never claim that you are a fluent native Marwari speaker. If Marwari is unclear or your reply would sound forced, continue in warm conversational Hindi and offer to keep going in Hindi, English, or Marwari.
+- If the customer asks which languages you can speak, answer that question directly and briefly. Do not ignore it and continue a jewellery pitch.
+- If speech is silent, only background noise, or unclear garbage text, do not invent a customer question or push the sales script. Briefly ask them to repeat, or wait quietly.
 
 Marwari style (when the customer is using Marwari):
 - Warm showroom Marwari, not textbook Hindi.
@@ -118,6 +120,17 @@ export function buildSessionOverrides(mode: LanguageMode): SessionOverrides | un
   return overrides;
 }
 
-export function buildLanguageContextUpdate(mode: LanguageMode): string {
-  return `${languageDirective(mode)} Prefer the customer's spoken language when it is clear. Do not invent prices, stock, discounts, or store policies.`;
+/**
+ * Soft language hint for explicit selector modes only.
+ * Returns null for auto so the dashboard agent stays unchanged.
+ */
+export function buildLanguageContextUpdate(mode: LanguageMode): string | null {
+  if (mode === "auto") return null;
+  if (mode === "en") {
+    return "Customer selected English for this test call. Reply in natural English. Answer direct questions (including about languages) normally—do not force a jewellery pitch.";
+  }
+  if (mode === "hi") {
+    return "Customer selected Hindi/Hinglish for this test call. Reply in natural Hindi or Hinglish to match them. Answer direct questions normally—do not force a jewellery pitch.";
+  }
+  return "Customer selected Marwari for this test call. Prefer warm conversational Marwari when clear; otherwise Hindi is fine. Answer direct questions normally—do not force a jewellery pitch. Do not invent what unclear audio said.";
 }

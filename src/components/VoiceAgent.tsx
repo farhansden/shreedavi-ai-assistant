@@ -145,12 +145,15 @@ const VoiceAgentSession = forwardRef<VoiceAgentHandle, VoiceAgentProps>(
         emit({ type: "duration", seconds: 0 });
         emit({ type: "status", status: "live" });
         emit({ type: "activity", activity: "listening" });
-        try {
-          sendContextualUpdateRef.current(
-            buildLanguageContextUpdate(languageModeForSessionRef.current),
-          );
-        } catch (error) {
-          console.warn("[Shreedevi language] contextual update skipped", error);
+        // Only nudge language when the tester picks a specific mode.
+        // Auto-detect leaves the ElevenLabs dashboard agent alone.
+        const hint = buildLanguageContextUpdate(languageModeForSessionRef.current);
+        if (hint) {
+          try {
+            sendContextualUpdateRef.current(hint);
+          } catch (error) {
+            console.warn("[Shreedevi language] contextual update skipped", error);
+          }
         }
       },
       onDisconnect: (details) => {

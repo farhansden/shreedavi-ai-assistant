@@ -33,8 +33,9 @@ export function LanguageTestingPanel({
         <p className="text-[12px] text-[#9c8e7c]">Demo only</p>
       </div>
       <p className="mt-2 text-[13px] leading-6 text-[#9c8e7c]">
-        Choose a language for the next call. This configures the ElevenLabs session.
-        Test scripts stay here and are never added to the live call log.
+        Leave Auto-detect for normal calls — that uses Maya’s original dashboard agent.
+        English / Hindi / Marwari only add a light test hint. Scripts stay here and never
+        enter the live call log.
       </p>
 
       <div
